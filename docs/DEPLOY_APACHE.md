@@ -1,5 +1,7 @@
 # Instalação em Apache / alojamento partilhado
 
+Para **cPanel sem terminal**, usa o [guia de instalação pelo Git](CPANEL_GIT.md). As instruções seguintes descrevem o pacote manual e a operação por CLI quando disponível.
+
 ## Requisitos
 
 - PHP **8.2 ou superior** com PDO SQLite, cURL, mbstring, iconv, fileinfo, OpenSSL, JSON e zlib; Apache 2.4 com `mod_rewrite` e `.htaccess` permitido.

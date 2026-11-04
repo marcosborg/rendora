@@ -10,9 +10,7 @@ test-results/
 playwright-report/
 *.tsbuildinfo
 
-vendor/
+# Dependencies and compiled UI are committed for cPanel without a terminal.
 storage/*
 !storage/.gitkeep
-public/assets/
-public/app.html
 release/

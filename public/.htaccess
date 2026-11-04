@@ -1,6 +1,9 @@
 Options -Indexes
 Require all granted
 DirectoryIndex index.php
+<FilesMatch "^\.">
+Require all denied
+</FilesMatch>
 RewriteEngine On
 RewriteCond %{HTTP:Authorization} .
 RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

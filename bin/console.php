@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
+$runtimeLock=fopen(dirname(__DIR__).'/storage/runtime.lock','c');
+if(!$runtimeLock||!flock($runtimeLock,LOCK_SH|LOCK_NB)||is_file(dirname(__DIR__).'/storage/deploy.maintenance')){fwrite(STDERR,"Atualização em curso.\n");exit(1);}
+register_shutdown_function(static function()use($runtimeLock){flock($runtimeLock,LOCK_UN);fclose($runtimeLock);});
 use HomeAlone\{Database,Jobs};
 $command=$argv[1]??'help';
 try{

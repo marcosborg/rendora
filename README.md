@@ -2,6 +2,8 @@
 
 Plataforma de gestão de arrendamento mensal em português europeu, preparada para **alojamento partilhado Linux com Apache, PHP 8.2 e SQLite**.
 
+**Instalação sem terminal no cPanel:** [guia Git + Deploy HEAD Commit](docs/CPANEL_GIT.md). O repositório inclui as dependências PHP e a interface compilada. O assistente HTTPS cria o primeiro administrador mediante uma chave privada disponível no Gestor de Ficheiros.
+
 A arquitetura inicialmente proposta foi ajustada ao alojamento indicado: React + TypeScript gera ficheiros estáticos; Slim/PHP disponibiliza a API; PDO/SQLite guarda os dados; cron processa rendas e notificações. Não há dependência de Node.js, PostgreSQL, Redis ou Docker em produção.
 
 ## Funcionalidades
