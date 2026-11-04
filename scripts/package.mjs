@@ -1,0 +1,20 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+const root=process.cwd();const stamp=new Date().toISOString().replace(/[:.]/g,'-');const release=path.join(root,'release',`homealone-apache-${stamp}`);const privateDir=path.join(release,'homealone');const publicDir=path.join(release,'public_html');
+await fs.access(path.join(root,'public','app.html'));await fs.access(path.join(root,'vendor','autoload.php'));
+await fs.mkdir(privateDir,{recursive:true});await fs.mkdir(publicDir,{recursive:true});
+for(const name of ['src','database','bin','vendor','docs','composer.json','composer.lock','.env.example','.htaccess','README.md'])await fs.cp(path.join(root,name),path.join(privateDir,name),{recursive:true});
+await fs.mkdir(path.join(privateDir,'storage'),{recursive:true});await fs.mkdir(path.join(privateDir,'public'),{recursive:true});
+for(const file of ['app.html','openapi.json'])await fs.copyFile(path.join(root,'public',file),path.join(privateDir,'public',file));
+const html=await fs.readFile(path.join(root,'public','app.html'),'utf8');
+for(const name of ['.htaccess','openapi.json','docs.html'])await fs.copyFile(path.join(root,'public',name),path.join(publicDir,name));
+await fs.cp(path.join(root,'public','brand'),path.join(publicDir,'brand'),{recursive:true});
+const assets=[...html.matchAll(/(?:src|href)="(\/assets\/[^\"]+)"/g)].map(m=>m[1].slice(1));
+for(const asset of assets){await fs.mkdir(path.dirname(path.join(publicDir,asset)),{recursive:true});await fs.copyFile(path.join(root,'public',asset),path.join(publicDir,asset));}
+await fs.writeFile(path.join(publicDir,'index.php'),`<?php\ndeclare(strict_types=1);\nrequire dirname(__DIR__).'/homealone/src/bootstrap.php';\nHomeAlone\\Application::create(database())->run();\n`);
+await fs.writeFile(path.join(publicDir,'.user.ini'),'display_errors=Off\nlog_errors=On\nupload_max_filesize=10M\npost_max_size=12M\nexpose_php=Off\n');
+await fs.writeFile(path.join(release,'INSTALL.txt'),'RENDORA — Apache / PHP 8.2 / SQLite\n\nCarregue homealone e public_html lado a lado na pasta da conta.\nNunca coloque a pasta privada homealone dentro de public_html.\nCopie homealone/.env.example para homealone/.env e configure o domínio HTTPS.\nExecute: php homealone/bin/console.php migrate\nConfigure cron: php /caminho/homealone/bin/console.php cron (a cada 5 minutos).\nAbra o site e crie a empresa. Não ative DEMO_MODE em produção.\n\nInstruções completas: homealone/docs/DEPLOY_APACHE.md\nO pacote não contém dados locais nem segredos.\n');
+const files=[];async function inspect(dir){for(const entry of await fs.readdir(dir,{withFileTypes:true})){const full=path.join(dir,entry.name);if(entry.isDirectory())await inspect(full);else files.push(path.relative(release,full).replaceAll('\\','/'));}}await inspect(release);
+if(files.some(f=>f.endsWith('.sqlite')||f.endsWith('/.env')||f.includes('uploads/')))throw new Error('Unexpected private runtime data in release');
+await fs.writeFile(path.join(release,'MANIFEST.json'),JSON.stringify({version:'0.1.0',created:new Date().toISOString(),runtime:'Apache/PHP 8.2/SQLite',files},null,2));
+console.log(release);

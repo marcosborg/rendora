@@ -1,0 +1,25 @@
+/* Rendora identity: one light UI theme, plus inverse brand surfaces. */
+:root {
+  color-scheme: light;
+  --brand: #125c59;
+  --brand-hover: #0b4543;
+  --ink: #173b3a;
+  --text-muted: #536b69;
+  --muted: var(--text-muted);
+  --canvas: #f5f8f7;
+  --surface: #ffffff;
+  --surface-soft: #eaf2f0;
+  --line: #dce6e3;
+  --field-border: #6d8782;
+  --on-brand: #ffffff;
+  --accent: #c3a66a;
+  --accent-ink: #705522;
+  --focus: #007b76;
+  --inverse-muted: #d2e5e0;
+  --warning: #79551f;
+  --warning-surface: #faf1df;
+  --danger: #9c3832;
+  --danger-surface: #fff0ee;
+  --info: #285f83;
+  --info-surface: #edf4fa;
+}
