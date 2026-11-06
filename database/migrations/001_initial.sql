@@ -16,7 +16,23 @@ CREATE TABLE inspections(id TEXT PRIMARY KEY, company_id TEXT NOT NULL, contract
 CREATE TABLE charges(id TEXT PRIMARY KEY, company_id TEXT NOT NULL, contract_id TEXT NOT NULL, period TEXT NOT NULL, due_date TEXT NOT NULL, amount_cents INTEGER NOT NULL CHECK(amount_cents>0), confirmed INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(contract_id,period), UNIQUE(company_id,id), FOREIGN KEY(company_id,contract_id) REFERENCES contracts(company_id,id));
 CREATE TABLE payments(id TEXT PRIMARY KEY, company_id TEXT NOT NULL, charge_id TEXT NOT NULL, amount_cents INTEGER NOT NULL CHECK(amount_cents>0), kind TEXT NOT NULL CHECK(kind IN ('PAYMENT','REFUND','ADJUSTMENT','DISPUTE','DISPUTE_WON')), method TEXT NOT NULL, reason TEXT NOT NULL DEFAULT '', external_id TEXT UNIQUE, idempotency_key TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(company_id,charge_id) REFERENCES charges(company_id,id));
 CREATE TABLE checkouts(id TEXT PRIMARY KEY, company_id TEXT NOT NULL, charge_id TEXT NOT NULL, stripe_session_id TEXT UNIQUE, payment_intent TEXT, amount_cents INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'CREATING', url TEXT, expires_at TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(company_id,id), FOREIGN KEY(company_id,charge_id) REFERENCES charges(company_id,id));
-CREATE UNIQUE INDEX one_active_checkout ON checkouts(charge_id) WHERE status IN ('CREATING','OPEN','PROCESSING');
+CREATE INDEX checkouts_charge_id ON checkouts(charge_id);
+
+CREATE TRIGGER one_active_checkout_insert
+BEFORE INSERT ON checkouts
+WHEN NEW.status IN ('CREATING','OPEN','PROCESSING')
+ AND EXISTS (SELECT 1 FROM checkouts WHERE charge_id = NEW.charge_id AND status IN ('CREATING','OPEN','PROCESSING'))
+BEGIN
+    SELECT RAISE(ABORT, 'Only one active checkout per charge');
+END;
+
+CREATE TRIGGER one_active_checkout_update
+BEFORE UPDATE OF charge_id, status ON checkouts
+WHEN NEW.status IN ('CREATING','OPEN','PROCESSING')
+ AND EXISTS (SELECT 1 FROM checkouts WHERE charge_id = NEW.charge_id AND status IN ('CREATING','OPEN','PROCESSING') AND rowid <> OLD.rowid)
+BEGIN
+    SELECT RAISE(ABORT, 'Only one active checkout per charge');
+END;
 CREATE TABLE webhook_events(id TEXT PRIMARY KEY, company_id TEXT, type TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE tickets(id TEXT PRIMARY KEY, company_id TEXT NOT NULL, property_id TEXT NOT NULL, reporter_id TEXT NOT NULL REFERENCES users(id), assignee_id TEXT REFERENCES users(id), provider_id TEXT, title TEXT NOT NULL, description TEXT NOT NULL, category TEXT NOT NULL DEFAULT 'OTHER', priority TEXT NOT NULL DEFAULT 'NORMAL', status TEXT NOT NULL DEFAULT 'NEW', due_at TEXT, scheduled_at TEXT, budget_cents INTEGER, budget_approved INTEGER NOT NULL DEFAULT 0, final_cost_cents INTEGER, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(company_id,id), FOREIGN KEY(company_id,property_id) REFERENCES properties(company_id,id), FOREIGN KEY(company_id,provider_id) REFERENCES contacts(company_id,id));
 CREATE TABLE ticket_notes(id TEXT PRIMARY KEY, company_id TEXT NOT NULL, ticket_id TEXT NOT NULL, author_id TEXT NOT NULL REFERENCES users(id), body TEXT NOT NULL, internal INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(company_id,ticket_id) REFERENCES tickets(company_id,id));

@@ -17,7 +17,7 @@
     "src/Scope.php": "f01ca2e78b1460d768cacf393986e6a102046b8994114f11c92239ca2b01f503",
     "src/Validate.php": "49276ac7596ab9abba257afc4844de505bd2b53974c54aeea6d37acc6f8be444",
     "src/bootstrap.php": "57a582639c63ceb7c9828120887089494f53ff9464ff7b998793b3ae1dfaa466",
-    "database/migrations/001_initial.sql": "97d20aca98f358a05fe796d371ee6d4e090d224dc4655be6db01c1dddbbeb0cd",
+    "database/migrations/001_initial.sql": "c820cb334976121d7632580993974ceb978a35af037fc81e28a746a168d3947a",
     "database/migrations/002_invitation_verification.sql": "aecd2e2b614a2ff279b360e98f3638e9c5dddd4993a96a71762c4940fa53a670",
     "bin/console.php": "c48af80d5888097cdb444da01041a057c0a5111d7582f808b3bf801d63311450",
     "vendor/autoload.php": "1116dfff308313f8b94ef4b80cde97a8b3696b80b776f197c2b92f9700ce99bf",
