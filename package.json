@@ -11,6 +11,7 @@
     "setup": "php bin/console.php migrate && php bin/console.php seed",
     "test": "php tests/run.php",
     "test:api": "node --test tests/api.test.mjs",
+    "test:demo": "node --test tests/demo.test.mjs",
     "test:cpanel": "node --test tests/cpanel.test.mjs",
     "prepare:cpanel": "composer install --no-dev --prefer-dist --optimize-autoloader && npm run build && node scripts/cpanel-manifest.mjs",
     "client:generate": "openapi-typescript public/openapi.json -o packages/client/src/schema.d.ts",

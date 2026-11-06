@@ -4,6 +4,7 @@ namespace HomeAlone;
 use Psr\Http\Message\ServerRequestInterface as Request;
 final class Auth {
     public function __construct(private Database $db) {}
+    public static function cookieName(): string { return defined('RENDORA_PUBLIC_DEMO') ? '__Host-rendora_demo' : 'ha_session'; }
     public function throttle(string $key,int $limit=10,int $seconds=900): void {
         $key=hash('sha256',$key);$now=time();
         $this->db->transaction(function()use($key,$now,$limit,$seconds){
@@ -32,7 +33,7 @@ final class Auth {
         return ['token'=>$token,'csrf'=>$csrf,'user'=>['id'=>$user['id'],'name'=>$user['name'],'email'=>$user['email'],'platform_admin'=>(bool)($user['platform_admin']??false)],'expires_in'=>86400];
     }
     public function user(Request $request): array {
-        $bearer=$request->getHeaderLine('Authorization');$token=str_starts_with($bearer,'Bearer ')?substr($bearer,7):($request->getCookieParams()['ha_session']??'');
+        $bearer=$request->getHeaderLine('Authorization');$token=str_starts_with($bearer,'Bearer ')?substr($bearer,7):($request->getCookieParams()[self::cookieName()]??'');
         if(!$token)throw new HttpError(401,'Inicie sessão para continuar.');
         $row=$this->db->one('SELECT u.id,u.name,u.email,u.platform_admin,s.csrf,s.id session_id FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>CURRENT_TIMESTAMP',[hash('sha256',$token)]);
         if(!$row)throw new HttpError(401,'Sessão expirada. Inicie sessão novamente.');

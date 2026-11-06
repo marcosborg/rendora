@@ -60,7 +60,7 @@ function rendoraDeploy(string $repository,string $accountHome): array {
         }
         file_put_contents($private.'/storage/deploy.maintenance','Deployment in progress');
         foreach(['src','database/migrations','bin','vendor','deploy','docs'] as $dir)$copy($repository.'/'.$dir,$private.'/'.$dir);
-        foreach(['composer.json','composer.lock','.env.example','.htaccess'] as $file)$copy($repository.'/'.$file,$private.'/'.$file);
+        foreach(['database/seed.php','composer.json','composer.lock','.env.example','.htaccess'] as $file)$copy($repository.'/'.$file,$private.'/'.$file);
         if(!is_dir($private.'/public'))mkdir($private.'/public',0700);
         foreach(['app.html','openapi.json'] as $file)$copy($repository.'/public/'.$file,$private.'/public/'.$file);
         foreach(['assets','brand'] as $dir)$copy($repository.'/public/'.$dir,$public.'/'.$dir);
