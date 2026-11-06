@@ -3,7 +3,7 @@
   "files": {
     "src/Administration.php": "9370b075f567d8a452320457a4e73783b4075b83283822314eaff7f20a2df682",
     "src/Application.php": "177f5dab2b166cd221764438f579100956a7d32c515e6e9ff0747a5de1a98258",
-    "src/Auth.php": "e497578355fcd013d5323a0f3a1679ea507eb71d9764543a95e318478d1e817c",
+    "src/Auth.php": "34455474a8e6e3310ebb03c5e566a3338f2259eec49080ceeccfb4671aac6dab",
     "src/Database.php": "b45fc50b27cf031d8fc99e29957625471fd96ebf7e93d2c25694c54f7fd7c7a9",
     "src/Documents.php": "248ccd7a31f6e6879846bc13fda39fdada3113e4680ab09f77ede65393950861",
     "src/Finance.php": "9807199fb55013d2d20912eff450cf900c1d96eb9decc39d2c8b5fe8573b1483",
