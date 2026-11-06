@@ -927,7 +927,7 @@
     "composer.lock": "ea20ae6be9a615abf6607250279a23d81458df755b2c634dbde63a9e5c50fcbe",
     ".env.example": "55333de03e946c5a97656f10356e0972dfb3a415855280bb06f3ffc915bbc403",
     ".htaccess": "fa28d421a28ed9b6f4b997d5119c2b8adbacff6e2dd119a179b71230f9664934",
-    "public/app.html": "9630e8c5368ec01931dd73cf14c214442fa085465a707b45baaa76af44846467",
+    "public/app.html": "ec524f4ba22c50d2058733b8f5090f989cc56befa5ffb39092f8c88c67860be4",
     "public/openapi.json": "6f2a3923d17c2d46656c470a73cda19e7730ac14116021a116968789e3b420a5",
     "public/docs.html": "ec138347b44b918bed64ddfa5c040f7855ae90015a08793c86400fac769bb630",
     "public/.htaccess": "31fba7d7094c0104f3ded7bc13c00f2f5d314efb464abf4958350d16cf3d2bf9",
@@ -936,7 +936,7 @@
     "public/brand/rendora-light.svg": "b0807cbbe1d47cd6bb80479ff0893828ce6b02008ae9a8b22b334d10ab9ed9a7",
     "public/brand/rendora-symbol-dark.svg": "9dd2f5d4aeb5ced74b4116f595b537db838f44de259c56c910eabef7f04a5ed5",
     "public/brand/rendora-symbol-light.svg": "99c69b1b0d6a24b1d6d53bd724a2314cbc50c54d2ddf78a3e095185a79e36262",
-    "public/assets/app-818q_Z5X.js": "70924bb5eae9b67f2e53282d1c8d980ce6ad04bf2e2cd22943f0934b2ce72b87",
+    "public/assets/app-BvcCg9Xl.js": "83dd574be03de18fee6b14b0ba0b9d2000a82eac43df9133e0b743c7ecaecb1f",
     "public/assets/app-B0pDkGsS.css": "5123727b62a36cabc2f2ff9afbcf5eb21d89071d17b999f50947a61c3ce9abd4"
   }
 }
