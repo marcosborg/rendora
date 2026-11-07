@@ -131,6 +131,8 @@ final class Application {
         $app->get('/robots.txt',fn(Request $r,Response $res)=>PublicPages::robots($res));
         $app->get('/sobre',fn(Request $r,Response $res)=>PublicPages::about($res,false));
         $app->get('/en/about',fn(Request $r,Response $res)=>PublicPages::about($res,true));
+        $app->get(PublicPages::FEATURES_PT,fn(Request $r,Response $res)=>PublicPages::about($res,false,true));
+        $app->get(PublicPages::FEATURES_EN,fn(Request $r,Response $res)=>PublicPages::about($res,true,true));
         $app->get('/alojamentos/{slug}',fn(Request $r,Response $res,array $a)=>PublicPages::catalog($res,self::shell(),$admin->publicCompany($a['slug']),$a['slug'],false));
         $app->get('/en/properties/{slug}',fn(Request $r,Response $res,array $a)=>PublicPages::catalog($res,self::shell(),$admin->publicCompany($a['slug']),$a['slug'],true));
         $app->get('/',fn(Request $r,Response $res)=>PublicPages::login($res,self::shell(),false));

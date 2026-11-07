@@ -2,7 +2,7 @@
   "format": 1,
   "files": {
     "src/Administration.php": "7a92d123bdac29ffbf94261ef8b2cf5179e8dbb3bfc76cd26dcd5aa132d79b39",
-    "src/Application.php": "4d6e7f2de98efbe6475d7c89ee76d3e525f8da087c32f5bbbffc734fb87be2ff",
+    "src/Application.php": "6d41350229bf4b791cf988f05d136b95a83365a9fdce838b41c43a68f0700d81",
     "src/Auth.php": "566e1ad7095d108f802b602f2202567a828ea0e66a2c7b914b7132b2cfd015a3",
     "src/Database.php": "50db471f6b4e4284b668c00f58057f2091812c412c029b7de94565c1012a268c",
     "src/Documents.php": "248ccd7a31f6e6879846bc13fda39fdada3113e4680ab09f77ede65393950861",
@@ -15,7 +15,7 @@
     "src/Operations.php": "1954e97b1e59d6c27e2ced07f4d7c52430bebd59e902641d5c920901ec6d99ec",
     "src/Payments.php": "a4ff729de88003ef7830fd5ff46ed1dbcdc9405785265846fa782b9db608f293",
     "src/Pdf.php": "550d7703d7608ec518369617417b918445258919c6903e9d1961a50f79218bd6",
-    "src/PublicPages.php": "3c5bbb47177e59e13e9663dba30445c8960c60e2e9ee9f9b8d0ec34f525133f5",
+    "src/PublicPages.php": "60db3ce1f2f6c388ac49dba7b59c122b01cd04b206a78c7999d6d5155fe455b4",
     "src/Rentals.php": "033755cddc4ab92c3749bd78c4ed9b5b0eca4dab627685b498bbbde7f5cc85db",
     "src/Scope.php": "f01ca2e78b1460d768cacf393986e6a102046b8994114f11c92239ca2b01f503",
     "src/Validate.php": "49276ac7596ab9abba257afc4844de505bd2b53974c54aeea6d37acc6f8be444",

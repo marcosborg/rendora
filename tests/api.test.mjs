@@ -12,13 +12,24 @@ after(()=>{server?.kill();});
 test('public server renders catalog HTML for SEO',async()=>{const response=await fetch(base+'/alojamentos/casa-lisboa');assert.equal(response.status,200);const html=await response.text();assert.match(html,/<title>Casa Lisboa/);assert.match(html,/Alcântara/);assert.doesNotMatch(html,/stripe_account_id/);});
 test('bilingual public pages have reciprocal URLs and login stays out of the index', async () => {
   const origin = base;
-  for (const [route, language] of [['/sobre', 'pt-PT'], ['/en/about', 'en']]) {
-    const response = await fetch(origin + route);
-    assert.equal(response.status, 200);
-    const html = await response.text();
-    assert.ok(html.includes(`<html lang="${language}">`));
-    assert.match(html, /hreflang="pt-PT".*\/sobre/);
-    assert.match(html, /hreflang="en".*\/en\/about/);
+  const pairs = [
+    ['/sobre', '/en/about'],
+    ['/software-gestao-arrendamentos', '/en/rental-management-software'],
+  ];
+  for (const [pt, en] of pairs) {
+    for (const [route, language] of [[pt, 'pt-PT'], [en, 'en']]) {
+      const response = await fetch(origin + route);
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get('x-robots-tag'), null);
+      const html = await response.text();
+      assert.ok(html.includes(`<html lang="${language}">`));
+      assert.ok(html.includes(`rel="canonical" href="${origin}${route}"`));
+      assert.ok(html.includes(`rel="alternate" hreflang="pt-PT" href="${origin}${pt}"`));
+      assert.ok(html.includes(`rel="alternate" hreflang="en" href="${origin}${en}"`));
+      assert.ok(html.includes(`rel="alternate" hreflang="x-default" href="${origin}${pt}"`));
+      const related = pairs.find(pair => pair[0] !== pt);
+      assert.ok(html.includes(`<a href="${related[language === 'en' ? 1 : 0]}">`));
+    }
   }
   const englishLogin = await fetch(origin + '/en/');
   assert.equal(englishLogin.headers.get('x-robots-tag'), 'noindex');
@@ -28,7 +39,14 @@ test('bilingual public pages have reciprocal URLs and login stays out of the ind
   assert.equal(catalog.headers.get('x-robots-tag'), 'noindex');
   assert.match(await catalog.text(), /Casa Lisboa.*Rental properties/);
   const sitemap = await (await fetch(origin + '/sitemap.xml')).text();
-  assert.match(sitemap, /<loc>[^<]+\/en\/about<\/loc>/);
+  for (const [pt, en] of pairs) {
+    for (const route of [pt, en]) {
+      const entry = sitemap.split('</url>').find(xml => xml.includes(`<loc>${origin}${route}</loc>`));
+      assert.ok(entry);
+      assert.ok(entry.includes(`hreflang="pt-PT" href="${origin}${pt}"`));
+      assert.ok(entry.includes(`hreflang="en" href="${origin}${en}"`));
+    }
+  }
   assert.doesNotMatch(sitemap, /\/en\/properties\//);
 });
 test('anonymous access and cross-company access fail',async()=>{assert.equal((await req('/properties',{},null)).status,401);assert.equal((await req('/properties',{},resident,'company-porto')).status,403);const rows=await req('/properties',{},porto,'company-porto');assert.equal(rows.data.length,1);});
