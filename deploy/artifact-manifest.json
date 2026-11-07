@@ -11,7 +11,7 @@
     "src/Installer.php": "1cb4be3b40cfd2e387aa43dad7c3777e90d192d09e1687dcc1b1ce1a3640d8c2",
     "src/Jobs.php": "7becdfa206d42ccf3e6842718b77ed10cd720ede31418d52ef2ff52c2862acb2",
     "src/Language.php": "3b613b855f17fdc9d54df1670a7194968f998e838a1322fdbdcecb6fbad59fea",
-    "src/LegalPages.php": "72d356c4067fcf4377d6c0596bbe438a33c48af617ae0c90d8ab8a1622544013",
+    "src/LegalPages.php": "87b79dbb7a611d25ec0dfea6ef460326eddfbb0599e13b8ae7353c7953e3f295",
     "src/MailTransport.php": "c634a3b6955fbe78ae1c24f323ba0528ae085f09be1a160e300b81f0d6d91e22",
     "src/Operations.php": "1954e97b1e59d6c27e2ced07f4d7c52430bebd59e902641d5c920901ec6d99ec",
     "src/Payments.php": "a4ff729de88003ef7830fd5ff46ed1dbcdc9405785265846fa782b9db608f293",

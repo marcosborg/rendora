@@ -5,6 +5,9 @@ namespace HomeAlone;
 use Psr\Http\Message\ResponseInterface as Response;
 
 final class LegalPages {
+    private const OPERATOR = 'Netlook';
+    private const ADDRESS = 'Rua Roberto Ivens, 787, 4450-255 Matosinhos, Portugal';
+
     private const PAGES = [
         ['legal', 'en/legal', 'Informação legal', 'Legal notice'],
         ['privacidade', 'en/privacy', 'Privacidade', 'Privacy'],
@@ -31,7 +34,7 @@ final class LegalPages {
         $lang=$english?'en':'pt-PT';
         $other=$english?'<a href="/'.$pt.'" lang="pt-PT">PT</a>':'<a href="/'.$en.'" lang="en">EN</a>';
         $home=$english?'/en/':'/';
-        $draft=$english?'Draft for review. Operator details and outstanding policies are to be completed.':'Minuta para revisão. Identificação do operador e políticas pendentes por completar.';
+        $draft=$english?'Draft for review. Outstanding details and policies are to be completed.':'Minuta para revisão. Dados e políticas pendentes por completar.';
         $sections='';
         foreach(self::sections($pt,$english) as [$heading,$body]){
             $sections.='<section><h2>'.self::escape($heading).'</h2><p>'.self::escape($body).'</p></section>';
@@ -68,22 +71,22 @@ HTML);
     private static function sections(string $page, bool $english): array {
         return match($page){
             'legal'=>$english?[
-                ['Operator','Legal name: [to complete]. Registered address: [to complete]. Tax or company number: [to complete]. Registration authority and number, where applicable: [to complete].'],
+                ['Operator',self::OPERATOR.' · '.self::ADDRESS],
                 ['Contact','General enquiries and support: info@rendora.pt.'],
                 ['About the service','Rendora is rental management software. Commercial subscriptions are intended for customers acting for business or professional purposes. The public demo uses fictional data and does not take real payments.'],
             ]:[
-                ['Entidade responsável','Denominação legal: [por preencher]. Morada ou sede: [por preencher]. NIF ou NIPC: [por preencher]. Entidade e número de registo, quando aplicável: [por preencher].'],
+                ['Entidade responsável',self::OPERATOR.' · '.self::ADDRESS],
                 ['Contacto','Informações e apoio: info@rendora.pt.'],
                 ['Sobre o serviço','A Rendora é um software de gestão de arrendamentos. As subscrições comerciais destinam-se a clientes que actuam no âmbito da sua actividade empresarial ou profissional. A demo pública usa dados fictícios e não aceita pagamentos reais.'],
             ],
             'privacidade'=>$english?[
-                ['Who handles your data','For Rendora’s own account administration, support and billing, the controller is [operator and address to complete]. Contact: info@rendora.pt. Where a customer uses Rendora to manage personal data on its behalf, that customer determines the purposes and Rendora acts on its instructions as set out in a separate processing agreement.'],
+                ['Who handles your data','For Rendora’s own account administration, support and billing, the controller is '.self::OPERATOR.', '.self::ADDRESS.'. Contact: info@rendora.pt. Where a customer uses Rendora to manage personal data on its behalf, that customer determines the purposes and Rendora acts on its instructions as set out in a separate processing agreement.'],
                 ['What is processed and why','Account and contact details support account access, service delivery and enquiries. Security logs help prevent abuse. Where applicable, billing records are kept to meet legal obligations. Contract performance or pre-contractual steps, legitimate interests in service security or responding to enquiries, and legal obligations apply as appropriate to the purpose.'],
                 ['Property enquiries','Contact details and the message are made available to the organisation responsible for the listing so that it can respond. The organisation determines how it handles the enquiry after receipt.'],
                 ['Recipients, transfers and retention','Hosting, email and payment providers may process data needed for their services. Provider details, transfer safeguards and retention periods or criteria: [to complete after verification].'],
                 ['Your rights','Depending on the circumstances, you may ask for access, correction, deletion, restriction or portability, object to processing or withdraw consent. Contact info@rendora.pt. You may also lodge a complaint with the Portuguese data protection authority (CNPD).'],
             ]:[
-                ['Quem trata os teus dados','Para gestão de contas, apoio e facturação próprios da Rendora, o responsável é [entidade e morada por preencher]. Contacto: info@rendora.pt. Quando um cliente usa a Rendora para gerir dados pessoais por sua conta, esse cliente define as finalidades e a Rendora actua segundo as suas instruções, nos termos de um acordo de tratamento separado.'],
+                ['Quem trata os teus dados','Para gestão de contas, apoio e facturação próprios da Rendora, o responsável é '.self::OPERATOR.', '.self::ADDRESS.'. Contacto: info@rendora.pt. Quando um cliente usa a Rendora para gerir dados pessoais por sua conta, esse cliente define as finalidades e a Rendora actua segundo as suas instruções, nos termos de um acordo de tratamento separado.'],
                 ['Que dados são tratados e para quê','Os dados de conta e contacto servem para gerir o acesso, prestar o serviço e responder a pedidos. Os registos de segurança ajudam a prevenir abusos. Quando aplicável, os dados de facturação são conservados para cumprir obrigações legais. Consoante a finalidade, o fundamento é a execução do contrato ou diligências pré-contratuais, o interesse legítimo na segurança ou na resposta a pedidos, ou o cumprimento de obrigações legais.'],
                 ['Pedidos sobre imóveis','Os dados de contacto e a mensagem são disponibilizados à organização responsável pelo anúncio para que possa responder. Essa organização determina como trata o pedido após a recepção.'],
                 ['Destinatários, transferências e conservação','Os fornecedores de alojamento, email e pagamentos podem tratar os dados necessários aos seus serviços. Identificação dos fornecedores, garantias de transferência e prazos ou critérios de conservação: [por preencher após verificação].'],
