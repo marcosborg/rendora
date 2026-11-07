@@ -57,13 +57,13 @@ final class Auth {
             return [...$this->session($u),'company_id'=>$c['id']];
         });
     }
-    public function resetRequest(array $d,string $ip): void {
+    public function resetRequest(array $d,string $ip,bool $english=false): void {
         $this->throttle('reset:'.$ip,5);$email=Validate::email($d);$u=$this->db->one('SELECT id FROM users WHERE email=?',[$email]);if(!$u)return;
         $token=bin2hex(random_bytes(32));
-        $this->db->transaction(function()use($u,$token,$email){
+        $this->db->transaction(function()use($u,$token,$email,$english){
             $this->db->run('DELETE FROM reset_tokens WHERE user_id=?',[$u['id']]);
             $this->db->insert('reset_tokens',['user_id'=>$u['id'],'token_hash'=>hash('sha256',$token),'expires_at'=>gmdate('Y-m-d H:i:s',time()+3600)]);
-            $this->db->insert('jobs',['type'=>'EMAIL','payload'=>json_encode(['email'=>$email,'subject'=>'Definir palavra-passe · Rendora','body'=>'Defina a sua palavra-passe: '.env('APP_URL').'/?reset='.$token]),'dedupe_key'=>'reset:'.hash('sha256',$token)]);
+            $this->db->insert('jobs',['type'=>'EMAIL','payload'=>json_encode(['email'=>$email,'subject'=>$english?'Set your password · Rendora':'Definir palavra-passe · Rendora','body'=>($english?'Set your password: ':'Defina a sua palavra-passe: ').rtrim(env('APP_URL'),'/').($english?'/en/':'/').'?reset='.$token]),'dedupe_key'=>'reset:'.hash('sha256',$token)]);
         });
     }
     public function reset(array $d): void {

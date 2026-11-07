@@ -22,7 +22,7 @@ final class Application {
         }return $loginResponse($res,$auth->session($u),false);});
         $app->get('/api/v1/auth/me',function(Request $r,Response $res)use($auth,$db,$json){$u=$auth->user($r);return $json($res,['user'=>['id'=>$u['id'],'name'=>$u['name'],'email'=>$u['email'],'platform_admin'=>(bool)$u['platform_admin']],'csrf'=>$u['csrf'],'companies'=>$db->all('SELECT c.id,c.name,c.slug,m.role FROM companies c JOIN memberships m ON m.company_id=c.id WHERE m.user_id=? AND m.active=1',[$u['id']])]);});
         $app->post('/api/v1/auth/logout',function(Request $r,Response $res)use($auth,$db,$json){$u=$auth->user($r);$db->run('DELETE FROM sessions WHERE id=?',[$u['session_id']]);return $json($res,['ok'=>true])->withAddedHeader('Set-Cookie',Auth::cookieName().'=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0'.(env('COOKIE_SECURE','true')==='true'?'; Secure':''));});
-        $app->post('/api/v1/auth/forgot',function(Request $r,Response $res)use($auth,$body,$json){$auth->resetRequest($body($r),$r->getServerParams()['REMOTE_ADDR']??'unknown');return $json($res,['message'=>'Se existir uma conta, receberá uma ligação por email.']);});
+        $app->post('/api/v1/auth/forgot',function(Request $r,Response $res)use($auth,$body,$json){$auth->resetRequest($body($r),$r->getServerParams()['REMOTE_ADDR']??'unknown',Language::english($r->getHeaderLine('X-Rendora-Language')));return $json($res,['message'=>'Se existir uma conta, receberá uma ligação por email.']);});
         $app->post('/api/v1/auth/reset',function(Request $r,Response $res)use($auth,$body,$json){$auth->reset($body($r));return $json($res,['ok'=>true]);});
         $route('GET','/dashboard',fn($s,$d,$a,$r)=>$finance->dashboard($s,$r->getQueryParams()));
         $route('GET','/properties',fn($s)=>$rentals->properties($s));
@@ -38,10 +38,33 @@ final class Application {
         $route('PATCH','/contracts/{id}',fn($s,$d,$a)=>$rentals->changeContract($s,$a['id'],$d));
         $route('POST','/contracts/{id}/deposits',fn($s,$d,$a)=>$rentals->deposit($s,$a['id'],$d));
         $route('POST','/contracts/{id}/inspections',fn($s,$d,$a)=>$rentals->inspection($s,$a['id'],$d));
-        $route('GET','/contracts/{id}/document',function($s,$d,$a)use($db,$rentals){$c=$rentals->contractDetail($s,$a['id']);$company=$db->one('SELECT name FROM companies WHERE id=?',[$s->companyId]);$property=$s->row('properties',$c['property_id']);return ['text'=>strtr($c['template'],['{{company}}'=>$company['name'],'{{residents}}'=>implode(', ',array_column($c['residents'],'name')),'{{property}}'=>$property['name'].' · '.$property['address'],'{{start}}'=>$c['start_date'],'{{rent}}'=>number_format($c['rent_cents']/100,2,',','.').' €'])];});
-
-        $route('GET','/contracts/{id}/pdf',function($s,$d,$a)use($db,$rentals){$c=$rentals->contractDetail($s,$a['id']);$company=$db->one('SELECT name FROM companies WHERE id=?',[$s->companyId]);$property=$s->row('properties',$c['property_id']);$text=strtr($c['template'],['{{company}}'=>$company['name'],'{{residents}}'=>implode(', ',array_column($c['residents'],'name')),'{{property}}'=>$property['name'].' · '.$property['address'],'{{start}}'=>$c['start_date'],'{{rent}}'=>number_format($c['rent_cents']/100,2,',','.').' €']);$response=new \Slim\Psr7\Response();$response->getBody()->write(Pdf::render('Contrato de arrendamento',$company['name'],[$text,'Início: '.$c['start_date'].' | Fim: '.($c['end_date']??'Sem termo'),'Encargos mensais: '.number_format($c['charges_cents']/100,2,',','.').' € | Caução prevista: '.number_format($c['deposit_cents']/100,2,',','.').' €','Vencimento: dia '.$c['due_day'].' de cada mês.','Assinatura do senhorio / representante: __________________________','Assinatura do(s) morador(es): __________________________']));return $response->withHeader('Content-Type','application/pdf')->withHeader('Content-Disposition','attachment; filename="contrato.pdf"');});
-        $route('GET','/charges/{id}/receipt.pdf',function($s,$d,$a)use($db,$finance){$c=$finance->ledger($s,$a['id']);$company=$db->one('SELECT name FROM companies WHERE id=?',[$s->companyId]);$lines=['DOCUMENTO NÃO FISCAL','Período: '.$c['period'].' | Vencimento: '.$c['due_date'],'Valor da renda: '.number_format($c['amount_cents']/100,2,',','.').' €','Valor líquido recebido: '.number_format($c['paid_cents']/100,2,',','.').' €','Saldo: '.number_format($c['balance_cents']/100,2,',','.').' €','Movimentos:'];$labels=['PAYMENT'=>'Pagamento','REFUND'=>'Reembolso','ADJUSTMENT'=>'Ajuste','DISPUTE'=>'Contestação','DISPUTE_WON'=>'Contestação ganha'];foreach($c['movements']as $p)$lines[]=$p['created_at'].' | '.$labels[$p['kind']].' | '.number_format($p['amount_cents']/100,2,',','.').' €'.($p['reason']?' — '.$p['reason']:'');$lines[]='Este comprovativo não substitui um recibo fiscal.';$response=new \Slim\Psr7\Response();$response->getBody()->write(Pdf::render('Comprovativo de pagamentos',$company['name'],$lines));return $response->withHeader('Content-Type','application/pdf')->withHeader('Content-Disposition','attachment; filename="comprovativo-nao-fiscal.pdf"');});
+        $contractDocument=static function(Scope $s,string $id,bool $english)use($db,$rentals):array{
+            $contract=$rentals->contractDetail($s,$id);
+            $company=$db->one('SELECT name FROM companies WHERE id=?',[$s->companyId])['name'];
+            $property=$s->row('properties',$contract['property_id']);
+            return [$contract,$company,Pdf::contractText($contract,$company,$property,$english)];
+        };
+        $pdfResponse=static function(string $bytes,string $filename,bool $english):Response{
+            $response=new \Slim\Psr7\Response();
+            $response->getBody()->write($bytes);
+            return $response->withHeader('Content-Type','application/pdf')
+                ->withHeader('Content-Language',$english?'en':'pt-PT')
+                ->withHeader('Content-Disposition','attachment; filename="'.$filename.'"');
+        };
+        $route('GET','/contracts/{id}/document',function($s,$d,$a,$r)use($contractDocument){
+            return ['text'=>$contractDocument($s,$a['id'],Language::english($r->getHeaderLine('X-Rendora-Language')))[2]];
+        });
+        $route('GET','/contracts/{id}/pdf',function($s,$d,$a,$r)use($contractDocument,$pdfResponse){
+            $english=Language::english($r->getHeaderLine('X-Rendora-Language'));
+            [$contract,$company,$text]=$contractDocument($s,$a['id'],$english);
+            return $pdfResponse(Pdf::contract($contract,$company,$text,$english),$english?'rental-agreement.pdf':'contrato.pdf',$english);
+        });
+        $route('GET','/charges/{id}/receipt.pdf',function($s,$d,$a,$r)use($db,$finance,$pdfResponse){
+            $english=Language::english($r->getHeaderLine('X-Rendora-Language'));
+            $charge=$finance->ledger($s,$a['id']);
+            $company=$db->one('SELECT name FROM companies WHERE id=?',[$s->companyId])['name'];
+            return $pdfResponse(Pdf::receipt($charge,$company,$english),$english?'payment-statement.pdf':'comprovativo-nao-fiscal.pdf',$english);
+        });
         $route('GET','/charges',fn($s,$d,$a,$r)=>$finance->charges($s,$r->getQueryParams()));
         $route('POST','/charges/generate',fn($s,$d)=>$finance->generate($s,Validate::text($d,'period',7,7)));
         $route('GET','/charges/{id}',fn($s,$d,$a)=>$finance->ledger($s,$a['id']));
@@ -74,8 +97,8 @@ final class Application {
         $route('GET','/settings',fn($s)=>$admin->settings($s));
         $route('PATCH','/settings',fn($s,$d)=>$admin->update($s,$d));
         $route('GET','/members',fn($s)=>$admin->members($s));
-        $route('POST','/members',fn($s,$d)=>$admin->invite($s,$d));
-        $route('POST','/members/{id}/invite',function($s,$d,$a)use($db,$auth){$s->requireRoles('ADMIN');$m=$db->one('SELECT u.email FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.company_id=? AND m.user_id=? AND m.invitation_pending=1',[$s->companyId,$a['id']]);if(!$m)throw new HttpError(404,'Convite pendente não encontrado.');$auth->resetRequest(['email'=>$m['email']],'resend:'.$s->companyId.':'.$a['id']);$s->audit('member.invitation_resent',$a['id']);return ['queued'=>true];});
+        $route('POST','/members',fn($s,$d,$a,$r)=>$admin->invite($s,$d,Language::english($r->getHeaderLine('X-Rendora-Language'))));
+        $route('POST','/members/{id}/invite',function($s,$d,$a,$r)use($db,$auth){$s->requireRoles('ADMIN');$m=$db->one('SELECT u.email FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.company_id=? AND m.user_id=? AND m.invitation_pending=1',[$s->companyId,$a['id']]);if(!$m)throw new HttpError(404,'Convite pendente não encontrado.');$auth->resetRequest(['email'=>$m['email']],'resend:'.$s->companyId.':'.$a['id'],Language::english($r->getHeaderLine('X-Rendora-Language')));$s->audit('member.invitation_resent',$a['id']);return ['queued'=>true];});
         $route('PATCH','/members/{id}',fn($s,$d,$a)=>$admin->updateMember($s,$a['id'],$d));
         $route('POST','/settings/connect',fn($s)=>$payments->connect($s));
         $route('POST','/settings/billing',fn($s,$d)=>$payments->billing($s,$d));
@@ -101,8 +124,8 @@ final class Application {
         $app->get('/api/v1/public/photos/{id}',function(Request $r,Response $res,array $a)use($db,$auth){$doc=$db->one("SELECT d.*,p.published,p.photos FROM documents d JOIN properties p ON p.id=d.entity_id AND p.company_id=d.company_id WHERE d.id=? AND d.entity_type='property'",[$a['id']]);if(!$doc||!str_starts_with($doc['mime_type'],'image/')||!in_array('/api/v1/public/photos/'.$a['id'],json_decode($doc['photos'],true),true))throw new HttpError(404,'Fotografia não encontrada.');if(!$doc['published']){$user=$auth->user($r);$m=$db->one('SELECT role FROM memberships WHERE company_id=? AND user_id=? AND active=1',[$doc['company_id'],$user['id']]);if(!$m)throw new HttpError(404,'Fotografia não encontrada.');(new Scope($db,$doc['company_id'],$user,$m['role']))->property($doc['entity_id']);}$path=dirname(__DIR__).'/storage/uploads/'.$doc['storage_path'];if(!is_file($path))throw new HttpError(404,'Fotografia não encontrada.');$res->getBody()->write(file_get_contents($path));return $res->withHeader('Content-Type',$doc['mime_type'])->withHeader('Cache-Control','no-store');});
         $app->post('/api/v1/public/{slug}/leads',fn(Request $r,Response $res,array $a)=>$json($res,$admin->publicLead($a['slug'],$body($r),$r->getServerParams()['REMOTE_ADDR']??'unknown'),201));
         $app->get('/api/v1/platform',fn(Request $r,Response $res)=>$json($res,$admin->platform($auth->user($r))));
-        $app->post('/api/v1/platform/companies',fn(Request $r,Response $res)=>$json($res,$admin->createCompany($auth->user($r),$body($r)),201));
-        $app->post('/api/v1/platform/companies/{id}/administrators/{userId}/invite',fn(Request $r,Response $res,array $a)=>$json($res,$admin->resendCompanyInvite($auth->user($r),$a['id'],$a['userId'])));
+        $app->post('/api/v1/platform/companies',fn(Request $r,Response $res)=>$json($res,$admin->createCompany($auth->user($r),$body($r),Language::english($r->getHeaderLine('X-Rendora-Language'))),201));
+        $app->post('/api/v1/platform/companies/{id}/administrators/{userId}/invite',fn(Request $r,Response $res,array $a)=>$json($res,$admin->resendCompanyInvite($auth->user($r),$a['id'],$a['userId'],Language::english($r->getHeaderLine('X-Rendora-Language')))));
         $app->post('/api/v1/platform/plans',function(Request $r,Response $res)use($auth,$db,$json,$body){$u=$auth->user($r);if(!$u['platform_admin'])throw new HttpError(403,'Acesso reservado.');$d=$body($r);return $json($res,$db->insert('plans',['name'=>Validate::text($d,'name',2,100),'stripe_price_id'=>!empty($d['stripe_price_id'])?Validate::text($d,'stripe_price_id',6,100):null,'property_limit'=>Validate::integer($d,'property_limit',1),'member_limit'=>Validate::integer($d,'member_limit',1)]));});
         $app->get('/sitemap.xml',fn(Request $r,Response $res)=>PublicPages::sitemap($res,$db));
         $app->get('/robots.txt',fn(Request $r,Response $res)=>PublicPages::robots($res));

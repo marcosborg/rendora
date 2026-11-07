@@ -20,6 +20,25 @@ seed($db);
 $s=new Scope($db,'company-lisbon',['id'=>'u-admin','name'=>'Mariana'],'ADMIN');$resident=new Scope($db,'company-lisbon',['id'=>'u-resident'],'RESIDENT');$tech=new Scope($db,'company-lisbon',['id'=>'u-tech'],'TECHNICIAN');$owner=new Scope($db,'company-lisbon',['id'=>'u-owner'],'OWNER');$porto=new Scope($db,'company-porto',['id'=>'u-porto'],'ADMIN');
 $r=new Rentals($db);$f=new Finance($db);$o=new Operations($db);$p=new Payments($db);$ad=new Administration($db);
 $base=['property_id'=>'p-graca','contact_ids'=>['co-beatriz'],'start_date'=>'2030-01-01','end_date'=>'2030-12-31','rent_cents'=>100000,'charges_cents'=>0,'deposit_cents'=>200000,'due_day'=>31,'notes'=>'Teste'];
+test('English password emails link to the English reset page',function()use($db){
+    $auth=new Auth($db);
+    $auth->resetRequest(['email'=>'morador@demo.homealone.pt'],'localized-reset',true);
+    $payload=$db->one("SELECT payload FROM jobs WHERE type='EMAIL'")['payload'];
+    $email=json_decode($payload,true);
+    eq($email['subject'],'Set your password · Rendora');
+    ok(str_contains($email['body'],'/en/?reset='));
+    $db->run("DELETE FROM jobs WHERE type='EMAIL'");
+    $db->run("DELETE FROM reset_tokens WHERE user_id='u-resident'");
+});
+test('Automatic emails carry bilingual copy without changing notifications',function()use($db,$o){
+    $o->notify('company-lisbon','u-resident','Lembrete','Consulta o portal.','test-bilingual-email',englishEmail:['Reminder','Open the portal.']);
+    $db->run("UPDATE jobs SET available_at='2000-01-01 00:00:00' WHERE dedupe_key='email:test-bilingual-email'");
+    $sent=[];
+    (new Jobs($db))->work(1,function(array $message)use(&$sent){$sent=$message;});
+    eq($sent['subject'],'Lembrete / Reminder');
+    ok(str_contains($sent['body'],'Open the portal.'));
+    eq($db->one("SELECT body FROM notifications WHERE dedupe_key='test-bilingual-email'")['body'],'Consulta o portal.');
+});
 test('Tenant property lists are isolated',function()use($r,$s,$porto){eq(count($r->properties($porto)),1);ok(!in_array('p-porto',array_column($r->properties($s),'id')));});
 test('Tenant IDs cannot bypass scope',fn()=>rejects(fn()=>$s->property('p-porto'),404));
 test('Tenant contract association rejected',fn()=>rejects(fn()=>$r->createContract($s,[...$base,'property_id'=>'p-porto']),404));

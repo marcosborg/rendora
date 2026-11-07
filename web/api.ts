@@ -4,7 +4,7 @@ let company = ''; let csrf = '';
 export function sessionContext(companyId: string, token: string) { company = companyId; csrf = token; }
 export async function api<T = any>(path: string, method = 'GET', data?: unknown): Promise<T> {
   const multipart = data instanceof FormData;
-  const response = await fetch(`/api/v1${path}`, { method, credentials: 'same-origin', headers: { ...(multipart ? {} : { 'Content-Type': 'application/json' }), 'X-Company-Id': company, 'X-CSRF-Token': csrf }, body: data === undefined ? undefined : multipart ? data : JSON.stringify(data) });
+  const response = await fetch(`/api/v1${path}`, { method, credentials: 'same-origin', headers: { ...(multipart ? {} : { 'Content-Type': 'application/json' }), 'X-Rendora-Language': locale, 'X-Company-Id': company, 'X-CSRF-Token': csrf }, body: data === undefined ? undefined : multipart ? data : JSON.stringify(data) });
   if (!response.ok) { const error = await response.json().catch(() => ({})); throw new Error(localError(error.message, response.status)); }
   return response.json();
 }
@@ -21,7 +21,7 @@ function localError(message?: string, status?: number) {
   return englishErrors[message || ''] || (status === 403 ? 'You do not have permission for this action.' : 'The request could not be completed.');
 }
 export async function download(path: string, filename: string) {
-  const response = await fetch(`/api/v1${path}`, { headers: { 'X-Company-Id': company }, credentials: 'same-origin' });
+  const response = await fetch(`/api/v1${path}`, { headers: { 'X-Rendora-Language': locale, 'X-Company-Id': company }, credentials: 'same-origin' });
   if (!response.ok) throw new Error(localError((await response.json().catch(() => ({}))).message, response.status));
   const url = URL.createObjectURL(await response.blob()); const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

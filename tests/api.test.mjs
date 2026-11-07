@@ -45,6 +45,21 @@ test('CSV export is authorized and contains only selected company',async()=>{let
 test('integration errors are actionable without pretending to charge',async()=>{const ch=(await req('/charges')).data.find(c=>c.balance_cents>0);const r=await post(`/charges/${ch.id}/checkout`,{});assert.equal(r.status,503);assert.match(r.data.message,/Configure a Stripe/);});
 test('logout revokes session',async()=>{const session=await login('financeiro@demo.homealone.pt');assert.equal((await post('/auth/logout',{},session)).status,200);assert.equal((await req('/auth/me',{},session)).status,401);});
 test('PDF contracts and non-fiscal receipts are actual PDF downloads',async()=>{for(const url of [`/contracts/${contract}/pdf`,`/charges/${charge.id}/receipt.pdf`]){const r=await req(url);assert.equal(r.status,200);assert.match(r.response.headers.get('content-type'),/application\/pdf/);assert.ok(r.data.startsWith('%PDF-'));assert.ok(r.data.length>1000);}});
+test('English downloads localise their labels and preserve PDF format',async()=>{
+  for(const [url,filename,title] of [
+    [`/contracts/${contract}/pdf`,'rental-agreement.pdf','Rental agreement'],
+    [`/charges/${charge.id}/receipt.pdf`,'payment-statement.pdf','Payment statement'],
+  ]){
+    const r=await req(url,{headers:{'X-Rendora-Language':'en-GB'}});
+    assert.equal(r.status,200);
+    assert.equal(r.response.headers.get('content-language'),'en');
+    assert.ok(r.response.headers.get('content-disposition').includes(filename));
+    assert.ok(r.data.startsWith('%PDF-'));
+    assert.ok(r.data.includes(`/Title (${title})`));
+  }
+  const r=await req('/contracts/ct-ines/document',{headers:{'X-Rendora-Language':'en-GB'}});
+  assert.match(r.data.text,/^Rental agreement between/);
+});
 test('concurrent overlapping contract attempts serialize safely',async()=>{const worker=()=>new Promise((resolve,reject)=>{const child=spawn('php',['tests/contract-worker.php',db],{cwd:root,stdio:['ignore','pipe','pipe']});let out='',err='';child.stdout.on('data',b=>out+=b);child.stderr.on('data',b=>err+=b);child.on('exit',code=>code===0?resolve(Number(out)):reject(new Error(err)));});assert.deepEqual((await Promise.all([worker(),worker()])).sort(),[200,409]);});
 test('HTTP server wrote only to the explicitly selected test database',()=>{const value=execFileSync('php',['-r',"$db=new PDO('sqlite:'.$argv[1]);$q=$db->prepare('SELECT name FROM properties WHERE id=?');$q->execute([$argv[2]]);echo $q->fetchColumn();",db,createdProperty],{cwd:root,encoding:'utf8'});assert.equal(value,'HTTP test updated');});
 test('platform company creation requires global admin and valid CSRF',async()=>{
