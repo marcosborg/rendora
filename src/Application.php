@@ -104,24 +104,18 @@ final class Application {
         $app->post('/api/v1/platform/companies',fn(Request $r,Response $res)=>$json($res,$admin->createCompany($auth->user($r),$body($r)),201));
         $app->post('/api/v1/platform/companies/{id}/administrators/{userId}/invite',fn(Request $r,Response $res,array $a)=>$json($res,$admin->resendCompanyInvite($auth->user($r),$a['id'],$a['userId'])));
         $app->post('/api/v1/platform/plans',function(Request $r,Response $res)use($auth,$db,$json,$body){$u=$auth->user($r);if(!$u['platform_admin'])throw new HttpError(403,'Acesso reservado.');$d=$body($r);return $json($res,$db->insert('plans',['name'=>Validate::text($d,'name',2,100),'stripe_price_id'=>!empty($d['stripe_price_id'])?Validate::text($d,'stripe_price_id',6,100):null,'property_limit'=>Validate::integer($d,'property_limit',1),'member_limit'=>Validate::integer($d,'member_limit',1)]));});
-        $app->get('/sitemap.xml',function(Request $r,Response $res)use($db){$xml='<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';foreach($db->all('SELECT slug FROM companies')as $c)$xml.='<url><loc>'.htmlspecialchars(env('APP_URL').'/alojamentos/'.$c['slug'],ENT_XML1).'</loc></url>';$res->getBody()->write($xml.'</urlset>');return $res->withHeader('Content-Type','application/xml');});
-        $app->get('/robots.txt',function(Request $r,Response $res){$res->getBody()->write("User-agent: *\nDisallow: /api/\nAllow: /alojamentos/\nSitemap: ".env('APP_URL')."/sitemap.xml");return $res->withHeader('Content-Type','text/plain');});
-        $app->get('/alojamentos/{slug}',function(Request $r,Response $res,array $a)use($admin){
-            $data=$admin->publicCompany($a['slug']);$html=self::shell();
-            $esc=fn($s)=>htmlspecialchars((string)$s,ENT_QUOTES,'UTF-8');
-            $title=$esc($data['company']['name'].' · Alojamentos | Rendora');
-            $description=$esc(mb_substr($data['company']['description']?:'Explora os alojamentos e pede informações à equipa. Gestão de imóveis e arrendamentos com a Rendora.',0,155));
-            $catalog='<main><h1>'.$esc($data['company']['name']).'</h1><p>'.$description.'</p>';
-            foreach($data['properties'] as $p)$catalog.='<article><h2>'.$esc($p['name']).'</h2><p>'.$esc($p['city']).' · '.number_format($p['rent_cents']/100,2,',','.').' €/mês</p><p>'.$esc($p['description']).'</p></article>';
-            $catalog.='<footer>Uma plataforma Rendora · Gestão de imóveis e arrendamentos</footer></main>';
-            $html=preg_replace_callback('/<title>.*?<\/title>/',fn()=>'<title>'.$title.'</title>',$html);
-            $html=preg_replace_callback('/<meta name="description"[^>]*\/>/',fn()=>'<meta name="description" content="'.$description.'"/>',$html);
-            $html=preg_replace_callback('/<meta property="og:title"[^>]*\/>/',fn()=>'<meta property="og:title" content="'.$title.'"/>',$html);
-            $html=preg_replace_callback('/<meta property="og:description"[^>]*\/>/',fn()=>'<meta property="og:description" content="'.$description.'"/>',$html);
-            $html=str_replace('<div id="root"></div>','<div id="root">'.$catalog.'</div>',$html);
-            $res->getBody()->write($html);return $res->withHeader('Content-Type','text/html; charset=utf-8');
+        $app->get('/sitemap.xml',fn(Request $r,Response $res)=>PublicPages::sitemap($res,$db));
+        $app->get('/robots.txt',fn(Request $r,Response $res)=>PublicPages::robots($res));
+        $app->get('/sobre',fn(Request $r,Response $res)=>PublicPages::about($res,false));
+        $app->get('/en/about',fn(Request $r,Response $res)=>PublicPages::about($res,true));
+        $app->get('/alojamentos/{slug}',fn(Request $r,Response $res,array $a)=>PublicPages::catalog($res,self::shell(),$admin->publicCompany($a['slug']),$a['slug'],false));
+        $app->get('/en/properties/{slug}',fn(Request $r,Response $res,array $a)=>PublicPages::catalog($res,self::shell(),$admin->publicCompany($a['slug']),$a['slug'],true));
+        $app->get('/',fn(Request $r,Response $res)=>PublicPages::login($res,self::shell(),false));
+        $app->get('/en/',fn(Request $r,Response $res)=>PublicPages::login($res,self::shell(),true));
+        $app->get('/en',function(Request $r,Response $res){
+            $query=$r->getUri()->getQuery();
+            return $res->withHeader('Location','/en/'.($query!==''?'?'.$query:''))->withStatus(308);
         });
-        $app->get('/',function(Request $r,Response $res){$res->getBody()->write(self::shell());return $res->withHeader('Content-Type','text/html; charset=utf-8');});
         if(defined('RENDORA_PUBLIC_DEMO')){
             $app->add(function(Request $r,$handler){
                 $pattern=\Slim\Routing\RouteContext::fromRequest($r)->getRoute()?->getPattern();
@@ -135,6 +129,9 @@ final class Application {
         }
         $app->addBodyParsingMiddleware();$app->addRoutingMiddleware();
         $app->add(function(Request $r,$handler)use($json){try{$origin=$r->getHeaderLine('Origin');$allowed=[rtrim(env('APP_URL'),'/')];if(env('APP_ENV')!=='production'&&!defined('RENDORA_PUBLIC_DEMO'))$allowed=[...$allowed,'http://127.0.0.1:5173','http://localhost:5173'];if(!in_array($r->getMethod(),['GET','HEAD','OPTIONS'])&&$origin&&!in_array($origin,$allowed,true))throw new HttpError(403,'Origem do pedido não autorizada.');if((int)$r->getHeaderLine('Content-Length')>12*1024*1024)throw new HttpError(413,'Pedido demasiado grande.');$res=$handler->handle($r);}catch(HttpError $e){$res=$json(new \Slim\Psr7\Response(),['message'=>$e->getMessage()],$e->status);}catch(\Slim\Exception\HttpNotFoundException){$res=$json(new \Slim\Psr7\Response(),['message'=>'Não encontrado.'],404);}catch(\Throwable $e){$id=Database::id();error_log('HomeAlone error '.$id.' '.get_class($e).' at '.basename($e->getFile()).':'.$e->getLine());$res=$json(new \Slim\Psr7\Response(),['message'=>'Não foi possível concluir a operação.','request_id'=>$id],500);}return $res->withHeader('X-Content-Type-Options','nosniff')->withHeader('X-Frame-Options','DENY')->withHeader('Referrer-Policy','same-origin')->withHeader('Cache-Control','no-store');});
+        if(defined('RENDORA_PUBLIC_DEMO')){
+            $app->add(fn(Request $r,$handler)=>$handler->handle($r)->withHeader('X-Robots-Tag','noindex'));
+        }
         return $app;
     }
     private static function shell(): string { $path=dirname(__DIR__).'/public/app.html';if(!is_file($path))throw new HttpError(503,'Execute npm run build para preparar a interface.');return file_get_contents($path); }

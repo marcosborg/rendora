@@ -10,6 +10,27 @@ async function login(email){const {response,data,status}=await post('/auth/demo'
 before(async()=>{await mkdir(path.dirname(db),{recursive:true});const env={...process.env,DB_PATH:db,APP_ENV:'test',DEMO_MODE:'true',COOKIE_SECURE:'false',APP_URL:base,STRIPE_SECRET_KEY:'',RESEND_API_KEY:''};execFileSync('php',['bin/console.php','migrate'],{cwd:root,env});execFileSync('php',['bin/console.php','seed'],{cwd:root,env});server=spawn('php',['-S',`127.0.0.1:${port}`,'-t','public','public/router.php'],{cwd:root,env,stdio:['ignore','ignore','pipe']});server.stderr.on('data',chunk=>{stderr+=chunk.toString();});for(let i=0;i<50;i++){try{if((await fetch(base+'/api/v1/health')).ok)break;}catch{}await new Promise(r=>setTimeout(r,50));}admin=await login('gestor@demo.homealone.pt');resident=await login('morador@demo.homealone.pt');porto=await login('gestor@demo.porto.pt');tech=await login('tecnico@demo.homealone.pt');});
 after(()=>{server?.kill();});
 test('public server renders catalog HTML for SEO',async()=>{const response=await fetch(base+'/alojamentos/casa-lisboa');assert.equal(response.status,200);const html=await response.text();assert.match(html,/<title>Casa Lisboa/);assert.match(html,/Alcântara/);assert.doesNotMatch(html,/stripe_account_id/);});
+test('bilingual public pages have reciprocal URLs and login stays out of the index', async () => {
+  const origin = base;
+  for (const [route, language] of [['/sobre', 'pt-PT'], ['/en/about', 'en']]) {
+    const response = await fetch(origin + route);
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    assert.ok(html.includes(`<html lang="${language}">`));
+    assert.match(html, /hreflang="pt-PT".*\/sobre/);
+    assert.match(html, /hreflang="en".*\/en\/about/);
+  }
+  const englishLogin = await fetch(origin + '/en/');
+  assert.equal(englishLogin.headers.get('x-robots-tag'), 'noindex');
+  assert.match(await englishLogin.text(), /<html lang="en">/);
+  const catalog = await fetch(origin + '/en/properties/casa-lisboa');
+  assert.equal(catalog.status, 200);
+  assert.equal(catalog.headers.get('x-robots-tag'), 'noindex');
+  assert.match(await catalog.text(), /Casa Lisboa.*Rental properties/);
+  const sitemap = await (await fetch(origin + '/sitemap.xml')).text();
+  assert.match(sitemap, /<loc>[^<]+\/en\/about<\/loc>/);
+  assert.doesNotMatch(sitemap, /\/en\/properties\//);
+});
 test('anonymous access and cross-company access fail',async()=>{assert.equal((await req('/properties',{},null)).status,401);assert.equal((await req('/properties',{},resident,'company-porto')).status,403);const rows=await req('/properties',{},porto,'company-porto');assert.equal(rows.data.length,1);});
 test('real JSON property creation, edit and reload persist',async()=>{let r=await post('/properties',{name:'HTTP test apartment',type:'APARTMENT',address:'Rua de Teste, 10',city:'Lisboa',rent_cents:110000,area:70,bedrooms:2,description:'Apartamento para testar a persistência.',parent_id:null,owner_id:'u-owner',published:false,photos:[],amenities:['Mobilado']});assert.equal(r.status,200,JSON.stringify(r.data));createdProperty=r.data.id;r=await req(`/properties/${createdProperty}`,{method:'PATCH',body:JSON.stringify({...r.data,name:'HTTP test updated',photos:[],amenities:['Mobilado']})});assert.equal(r.status,200,JSON.stringify(r.data));const list=(await req('/properties')).data;assert.equal(list.find(p=>p.id===createdProperty).name,'HTTP test updated');});
 test('CSRF protection rejects cookie mutation with missing token',async()=>{const r=await req('/charges/generate',{method:'POST',headers:{'X-CSRF-Token':''},body:JSON.stringify({period:'2035-01'})});assert.equal(r.status,403);});

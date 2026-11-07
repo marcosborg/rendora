@@ -2,7 +2,7 @@
   "format": 1,
   "files": {
     "src/Administration.php": "9370b075f567d8a452320457a4e73783b4075b83283822314eaff7f20a2df682",
-    "src/Application.php": "01c9b612ed82343c5290b80ccb633fcd2f50f35c07b2d305d56ebcb480247342",
+    "src/Application.php": "4607aaa9b6f205b9c3efdbb8b1da6095ff6314f0545506522624d12304a95464",
     "src/Auth.php": "ff5d1fdade61f77dbe364999b38445f8162f4c332249a92d8d04ffb744c19fe8",
     "src/Database.php": "50db471f6b4e4284b668c00f58057f2091812c412c029b7de94565c1012a268c",
     "src/Documents.php": "248ccd7a31f6e6879846bc13fda39fdada3113e4680ab09f77ede65393950861",
@@ -13,6 +13,7 @@
     "src/Operations.php": "0a061df3dede7085552b6ab9f6e8357a9f12aa9408ed6bd2a4a738a4797fa931",
     "src/Payments.php": "a4ff729de88003ef7830fd5ff46ed1dbcdc9405785265846fa782b9db608f293",
     "src/Pdf.php": "bd89e3ad8f721178b28edbddc9caf7eaac2725a44ad52be18fcc5fd98cf1f22f",
+    "src/PublicPages.php": "0af11b8b9a5710659d739da086886f814fd0e9a05c1793a2a93e59aa91065f8c",
     "src/Rentals.php": "033755cddc4ab92c3749bd78c4ed9b5b0eca4dab627685b498bbbde7f5cc85db",
     "src/Scope.php": "f01ca2e78b1460d768cacf393986e6a102046b8994114f11c92239ca2b01f503",
     "src/Validate.php": "49276ac7596ab9abba257afc4844de505bd2b53974c54aeea6d37acc6f8be444",
@@ -928,7 +929,7 @@
     "composer.lock": "ea20ae6be9a615abf6607250279a23d81458df755b2c634dbde63a9e5c50fcbe",
     ".env.example": "55333de03e946c5a97656f10356e0972dfb3a415855280bb06f3ffc915bbc403",
     ".htaccess": "fa28d421a28ed9b6f4b997d5119c2b8adbacff6e2dd119a179b71230f9664934",
-    "public/app.html": "1381564d23e8671cdf33c879e9a29741820ddc7a3134380cd9d233a949d513af",
+    "public/app.html": "d80642375e36ccd4b5884865d476436266598ac4e3d3c3a0861f3f19559fc469",
     "public/openapi.json": "6f2a3923d17c2d46656c470a73cda19e7730ac14116021a116968789e3b420a5",
     "public/docs.html": "ec138347b44b918bed64ddfa5c040f7855ae90015a08793c86400fac769bb630",
     "public/.htaccess": "31fba7d7094c0104f3ded7bc13c00f2f5d314efb464abf4958350d16cf3d2bf9",
@@ -937,7 +938,7 @@
     "public/brand/rendora-light.svg": "b0807cbbe1d47cd6bb80479ff0893828ce6b02008ae9a8b22b334d10ab9ed9a7",
     "public/brand/rendora-symbol-dark.svg": "9dd2f5d4aeb5ced74b4116f595b537db838f44de259c56c910eabef7f04a5ed5",
     "public/brand/rendora-symbol-light.svg": "99c69b1b0d6a24b1d6d53bd724a2314cbc50c54d2ddf78a3e095185a79e36262",
-    "public/assets/app-CbKwuuVs.js": "c0e955675843b034c43749f4ab470665e0803e2fbd34b0b2395e2d48169c496f",
-    "public/assets/app-B0pDkGsS.css": "5123727b62a36cabc2f2ff9afbcf5eb21d89071d17b999f50947a61c3ce9abd4"
+    "public/assets/app-D7DjZqjD.js": "b33803bbed488020c90cba5db1cd06084b17cd79ae1b80f123628a092b238ca2",
+    "public/assets/app-DEwDCVmV.css": "eef5c06823e70254fdec517b2db4e5a41651dbdf6237f37b6737d6bab3007c10"
   }
 }

@@ -107,3 +107,13 @@ button:focus-visible,a:focus-visible { outline:3px solid var(--focus); outline-o
 @media(prefers-reduced-motion:reduce) {
   *,*::before,*::after { animation:none!important;transition:none!important;scroll-behavior:auto!important; }
 }
+
+.language-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 3px 8px;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
