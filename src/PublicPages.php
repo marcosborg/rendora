@@ -11,7 +11,7 @@ final class PublicPages {
     public const FEATURES_PT = '/software-gestao-arrendamentos';
     public const FEATURES_EN = '/en/rental-management-software';
 
-    public static function about(Response $response, bool $english, bool $featurePage=false): Response {
+    public static function about(Response $response, bool $english, bool $featurePage=false, string $enquiryState=''): Response {
         [$ptPath,$enPath]=$featurePage?[self::FEATURES_PT,self::FEATURES_EN]:[self::ABOUT_PT,self::ABOUT_EN];
         $language=$english?'en':'pt-PT';
         $title=$english?'Rendora · Property and rental management':'Rendora · Gestão de imóveis e arrendamentos';
@@ -79,6 +79,9 @@ final class PublicPages {
         $image=self::escape(self::origin().'/brand/rendora-light.svg');
         $locale=$english?'en_GB':'pt_PT';
         $legal=LegalPages::footer($english);
+        $commercial=$featurePage&&!defined('RENDORA_PUBLIC_DEMO')?CommercialPage::render($english,$enquiryState):'';
+        $requestLabel=$english?'Request a demo':'Pedir uma demonstração';
+        $requestLink=$commercial!==''?'<a class="cta cta-secondary" href="#demonstracao">'.$requestLabel.'</a>':'';
         $html=<<<HTML
 <!doctype html>
 <html lang="$language">
@@ -115,6 +118,13 @@ final class PublicPages {
         p{line-height:1.65;color:#3c5956}.hero p{max-width:39rem;font-size:1.2rem;margin-block:1.5rem}
         .cta{display:inline-block;background:#125c59;color:#fff;border-radius:.6rem;padding:.85rem 1.2rem;font-weight:750;text-decoration:none}
         .cta:hover{background:#0c4946}
+        .hero-actions{display:flex;flex-wrap:wrap;gap:.7rem}.cta-secondary{background:#fff;color:#125c59;border:1px solid #125c59}.cta-secondary:hover{background:#e0eeea}
+        .commercial-section{margin-block:0 3rem}.commercial-section>h2{font-size:1.6rem}
+        .plan-grid,.demo-enquiry{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr));gap:1rem;max-width:46rem}
+        .plan-grid h3{margin:0}.plan-grid strong{font-size:1.35rem}.demo-enquiry{background:#fff;border:1px solid #d5e5e0;border-radius:1rem;padding:1.4rem}
+        .demo-enquiry label{display:grid;gap:.35rem;font-weight:650}.demo-enquiry input,.demo-enquiry select{width:100%;padding:.55rem;font:inherit;border:1px solid #9bb9b2;border-radius:.4rem;background:white;color:inherit}
+        .demo-enquiry p,.demo-enquiry button{grid-column:1/-1}.demo-enquiry p{margin:0}.demo-enquiry button{justify-self:start;border:0;font:inherit;font-weight:750;cursor:pointer}
+        .form-status{font-weight:700}
         .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr));gap:1rem;margin-block:0 4rem}
         article{border:1px solid #d5e5e0;border-radius:1rem;background:#fff;padding:1.4rem}
         h2{font-size:1.2rem;margin:0}article p{margin-bottom:0}footer{border-top:1px solid #d5e5e0;padding-block:1.25rem}.legal-links{display:flex;gap:.5rem 1rem;flex-wrap:wrap}
@@ -126,8 +136,9 @@ final class PublicPages {
         <nav aria-label="$navLabel"><div class="language-switch" role="group" aria-label="$languageLabel">$pt$en</div><a href="$relatedPath">$relatedLabel</a><a href="$login">$loginLabel</a></nav>
     </div></header>
     <main class="wrap">
-        <section class="hero"><h1>$headline</h1><p>$intro</p><a class="cta" href="$demo">$demoLabel</a></section>
+        <section class="hero"><h1>$headline</h1><p>$intro</p><div class="hero-actions"><a class="cta" href="$demo">$demoLabel</a>$requestLink</div></section>
         <section class="features" aria-label="$featuresLabel">$cards</section>
+        $commercial
     </main>
     <footer><div class="wrap">$legal</div></footer>
 </body>

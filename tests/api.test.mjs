@@ -49,6 +49,37 @@ test('bilingual public pages have reciprocal URLs and login stays out of the ind
   }
   assert.doesNotMatch(sitemap, /\/en\/properties\//);
 });
+test('commercial pages show indicative plans and queue a single demo request', async () => {
+  const pt = '/software-gestao-arrendamentos';
+  const en = '/en/rental-management-software';
+  for (const [path, label, demo] of [[pt, 'Pedir uma demonstração', '/'], [en, 'Request a demo', '/en/']]) {
+    const html = await (await fetch(base + path)).text();
+    assert.ok(html.includes(label));
+    for (const price of ['19 €', '39 €', '190 €', '390 €']) assert.ok(html.includes(price));
+    assert.ok(html.includes(`href="https://demo.rendora.pt${demo}"`));
+    assert.ok(html.includes(`action="${path}#demonstracao" method="post"`));
+  }
+  const send = (path, data, origin = base) => fetch(base + path, {
+    method: 'POST', body: new URLSearchParams(data), headers: { Origin: origin }, redirect: 'manual',
+  });
+  const data = { name: 'Demo Tester', email: 'enquiry@example.test', company: 'Test Company', units: '11-40' };
+  assert.equal((await send(pt, { ...data, units: 'invalid' })).status, 422);
+  assert.equal((await send(pt, data, 'https://unrelated.example')).status, 403);
+  assert.equal((await send(pt, { ...data, email: 'bot@example.test', website: 'bot.example' })).status, 303);
+  for (const path of [pt, en]) {
+    const response = await send(path, data);
+    assert.equal(response.status, 303);
+    const confirmation = await fetch(base + response.headers.get('location'));
+    assert.match(await confirmation.text(), /Pedido recebido|Request received/);
+  }
+  const jobs = JSON.parse(execFileSync('php', ['-r', 'require "src/bootstrap.php"; echo json_encode(database()->all("SELECT payload FROM jobs WHERE dedupe_key LIKE ?", ["demo-enquiry:%"]));'], {
+    cwd: root, env: { ...process.env, DB_PATH: db, DB_MYSQL_DSN: '' }, encoding: 'utf8',
+  }));
+  assert.equal(jobs.length, 1);
+  const payload = JSON.parse(jobs[0].payload);
+  assert.equal(payload.email, 'info@rendora.pt');
+  assert.match(payload.body, /enquiry@example.test/);
+});
 test('legal drafts have localised links and stay out of the index', async () => {
   const pairs = [
     ['/legal', '/en/legal'],
