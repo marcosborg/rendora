@@ -98,7 +98,37 @@ function rendoraDeploy(string $repository,string $accountHome): array {
         return ['private'=>$private,'public'=>$public,'backup'=>$backup,'installed'=>is_file($private.'/.env')];
     } finally {flock($lock,LOCK_UN);fclose($lock);}
 }
+function rendoraMysqlProbe(string $repository,string $home): void {
+    $storage=$home.'/rendora/storage';
+    require $repository.'/vendor/autoload.php';
+    $settings=Dotenv\Dotenv::parse(file_get_contents($storage.'/mysql-presentation.env'));
+    if($settings['DB_MYSQL_DSN']!=='mysql:host=localhost;dbname=rendora_presentation;charset=utf8mb4'
+        ||$settings['DB_MYSQL_USER']!=='rendora_app')throw new RuntimeException('Destino inesperado.');
+    $db=new PDO($settings['DB_MYSQL_DSN'],$settings['DB_MYSQL_USER'],$settings['DB_MYSQL_PASSWORD'],[
+        PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,
+    ]);
+    $db->beginTransaction();
+    try {
+        $db->exec('INSERT INTO trial_writer_lock (id) VALUES (2)');
+        $db->exec('UPDATE trial_writer_lock SET id=3 WHERE id=2');
+        if((int)$db->query('SELECT COUNT(*) FROM trial_writer_lock WHERE id=3')->fetchColumn()!==1
+            ||$db->exec('DELETE FROM trial_writer_lock WHERE id=3')!==1){
+            throw new RuntimeException('Falha na verificação de escrita.');
+        }
+    } finally {
+        $db->rollBack();
+    }
+    $result=['ok'=>true,'version'=>$db->query('SELECT VERSION()')->fetchColumn(),'users'=>(int)$db->query('SELECT COUNT(*) FROM users')->fetchColumn()];
+    $path=$storage.'/mysql-preflight.json';
+    umask(0077);
+    if(file_put_contents($path,json_encode($result,JSON_THROW_ON_ERROR)."\n",LOCK_EX)===false)throw new RuntimeException('Falha a guardar o resultado.');
+    echo "MySQL preflight OK.\n";
+}
 if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){
+    if(in_array('--mysql-probe',$argv,true)){
+        try{rendoraMysqlProbe(dirname(__DIR__),getenv('HOME')?:'');exit;}
+        catch(Throwable $e){fwrite(STDERR,'Rendora: falhou a verificação MySQL ('.get_class($e).').'."\n");exit(1);}
+    }
     try{$result=rendoraDeploy(dirname(__DIR__),getenv('HOME')?:'');echo json_encode($result,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES)."\nDeploy concluído. Configura o document root para a pasta public indicada.\n";}
     catch(Throwable $e){fwrite(STDERR,'Rendora: '.$e->getMessage()."\n");exit(1);}
 }
