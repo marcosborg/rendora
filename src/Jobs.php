@@ -35,7 +35,11 @@ final class Jobs {
     }
     public function send(array $d,string $key): void {
         if(env('DEMO_MODE')==='true')throw new HttpError(503,'Emails externos desativados na demonstração.');
-        if(!env('RESEND_API_KEY')||!env('EMAIL_FROM'))throw new HttpError(503,'Serviço de email não configurado.');
+        if(!MailTransport::configured())throw new HttpError(503,'Serviço de email não configurado.');
+        if(env('SMTP_HOST')!==''){
+            MailTransport::smtp($d,$key);
+            return;
+        }
         $ch=curl_init('https://api.resend.com/emails');curl_setopt_array($ch,[CURLOPT_POST=>true,CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>20,CURLOPT_HTTPHEADER=>['Authorization: Bearer '.env('RESEND_API_KEY'),'Content-Type: application/json','Idempotency-Key: '.hash('sha256',$key)],CURLOPT_POSTFIELDS=>json_encode(['from'=>env('EMAIL_FROM'),'to'=>[$d['email']],'subject'=>$d['subject'],'text'=>$d['body']])]);curl_exec($ch);$status=curl_getinfo($ch,CURLINFO_HTTP_CODE);curl_close($ch);if($status<200||$status>=300)throw new HttpError(502,'O serviço de email não aceitou o envio.');
     }
 }

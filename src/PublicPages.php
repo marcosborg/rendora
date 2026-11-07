@@ -8,20 +8,24 @@ final class PublicPages {
     private const ABOUT_PT = '/sobre';
     private const ABOUT_EN = '/en/about';
 
-    public static function about(Response $response, bool $english): Response {
+    public const FEATURES_PT = '/software-gestao-arrendamentos';
+    public const FEATURES_EN = '/en/rental-management-software';
+
+    public static function about(Response $response, bool $english, bool $featurePage=false): Response {
+        [$ptPath,$enPath]=$featurePage?[self::FEATURES_PT,self::FEATURES_EN]:[self::ABOUT_PT,self::ABOUT_EN];
         $language=$english?'en':'pt-PT';
         $title=$english?'Rendora · Property and rental management':'Rendora · Gestão de imóveis e arrendamentos';
         $description=$english
             ?'Manage properties, rental contracts, rent and maintenance in one place. Explore the Rendora demo.'
             :'Gere imóveis, contratos de arrendamento, rendas e manutenção num só lugar. Experimenta a demo da Rendora.';
-        $url=self::escape(self::origin().($english?self::ABOUT_EN:self::ABOUT_PT));
+        $url=self::escape(self::origin().($english?$enPath:$ptPath));
         $languageLabel=$english?'Language':'Idioma';
         $pt=$english
-            ?'<a href="/sobre" lang="pt-PT" hreflang="pt-PT" aria-label="Português">PT</a>'
+            ?'<a href="'.$ptPath.'" lang="pt-PT" hreflang="pt-PT" aria-label="Português">PT</a>'
             :'<span lang="pt-PT" aria-current="true" aria-label="Português">PT</span>';
         $en=$english
             ?'<span lang="en" aria-current="true" aria-label="English">EN</span>'
-            :'<a href="/en/about" lang="en" hreflang="en" aria-label="English">EN</a>';
+            :'<a href="'.$enPath.'" lang="en" hreflang="en" aria-label="English">EN</a>';
         $login=$english?'/en/':'/';
         $loginLabel=$english?'Sign in':'Iniciar sessão';
         $demo=(defined('RENDORA_PUBLIC_DEMO')?'':'https://demo.rendora.pt').$login;
@@ -39,6 +43,29 @@ final class PublicPages {
             ['Rendas e despesas','Vê o que foi pago, o que está em atraso e quanto custa gerir cada imóvel.'],
             ['Manutenção e mensagens','Regista avarias, atribui trabalhos e acompanha os pedidos até à resolução.'],
         ];
+        if($featurePage){
+            $title=$english?'Rental management software | Rendora':'Software de gestão de arrendamentos | Rendora';
+            $description=$english
+                ?'Track rental agreements, rent balances and maintenance requests in Rendora. Try the software as a manager, resident, owner or technician.'
+                :'Controla contratos, rendas e pedidos de manutenção na Rendora. Experimenta o software como gestor, morador, proprietário ou técnico.';
+            $headline=$english?'Rental management software':'Software de gestão de arrendamentos';
+            $intro=$english
+                ?'Manage rental properties from contract to maintenance. Keep agreements, rent balances and requests in one workspace, with a separate portal view for each role.'
+                :'Gere os imóveis do contrato à manutenção. Reúne contratos, saldos de rendas e pedidos num só espaço, com uma vista própria no portal para cada perfil.';
+            $features=$english?[
+                ['Organise properties and rental agreements','Record owners and residents against each property, consult contract dates and see which agreements are approaching their end.'],
+                ['Track rent and outstanding balances','Check rent by period, record full or partial payments and identify outstanding amounts. Export reports for further analysis.'],
+                ['Assign and follow maintenance work','Residents can report issues. Managers can prioritise and assign requests, and technicians can update the work assigned to them.'],
+                ['Explore the different portal views','Use the demo to see how a manager, resident, owner and technician work with the same properties from their own views.'],
+            ]:[
+                ['Organiza imóveis e contratos de arrendamento','Associa proprietários e moradores a cada imóvel, consulta as datas dos contratos e acompanha os arrendamentos que estão a terminar.'],
+                ['Acompanha rendas e saldos em aberto','Consulta as rendas por período, regista pagamentos totais ou parciais e identifica os montantes em dívida. Exporta relatórios para análise.'],
+                ['Atribui e acompanha trabalhos de manutenção','Os moradores podem reportar avarias. Os gestores podem definir prioridades e atribuir pedidos, e os técnicos podem actualizar os trabalhos que lhes foram atribuídos.'],
+                ['Experimenta as diferentes vistas do portal','Usa a demo para ver como um gestor, morador, proprietário e técnico trabalham com os mesmos imóveis nas suas próprias vistas.'],
+            ];
+        }
+        $relatedPath=$featurePage?($english?self::ABOUT_EN:self::ABOUT_PT):($english?self::FEATURES_EN:self::FEATURES_PT);
+        $relatedLabel=$featurePage?($english?'About Rendora':'Sobre a Rendora'):($english?'Rental management software':'Software de gestão de arrendamentos');
         $cards='';
         foreach($features as [$heading,$text]){
             $cards.='<article><h2>'.self::escape($heading).'</h2><p>'.self::escape($text).'</p></article>';
@@ -48,9 +75,10 @@ final class PublicPages {
         $demo=self::escape($demo);
         $title=self::escape($title);
         $description=self::escape($description);
-        $alternates=self::aboutAlternates(false);
+        $alternates=self::alternates($ptPath,$enPath,false);
         $image=self::escape(self::origin().'/brand/rendora-light.svg');
         $locale=$english?'en_GB':'pt_PT';
+        $legal=LegalPages::footer($english);
         $html=<<<HTML
 <!doctype html>
 <html lang="$language">
@@ -89,19 +117,19 @@ final class PublicPages {
         .cta:hover{background:#0c4946}
         .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr));gap:1rem;margin-block:0 4rem}
         article{border:1px solid #d5e5e0;border-radius:1rem;background:#fff;padding:1.4rem}
-        h2{font-size:1.2rem;margin:0}article p{margin-bottom:0}footer{border-top:1px solid #d5e5e0;padding-block:1.25rem}
+        h2{font-size:1.2rem;margin:0}article p{margin-bottom:0}footer{border-top:1px solid #d5e5e0;padding-block:1.25rem}.legal-links{display:flex;gap:.5rem 1rem;flex-wrap:wrap}
     </style>
 </head>
 <body>
     <header><div class="wrap">
         <img src="/brand/rendora-light.svg" alt="Rendora" width="136">
-        <nav aria-label="$navLabel"><div class="language-switch" role="group" aria-label="$languageLabel">$pt$en</div><a href="$login">$loginLabel</a></nav>
+        <nav aria-label="$navLabel"><div class="language-switch" role="group" aria-label="$languageLabel">$pt$en</div><a href="$relatedPath">$relatedLabel</a><a href="$login">$loginLabel</a></nav>
     </div></header>
     <main class="wrap">
         <section class="hero"><h1>$headline</h1><p>$intro</p><a class="cta" href="$demo">$demoLabel</a></section>
         <section class="features" aria-label="$featuresLabel">$cards</section>
     </main>
-    <footer><div class="wrap">Rendora</div></footer>
+    <footer><div class="wrap">$legal</div></footer>
 </body>
 </html>
 HTML;
@@ -134,7 +162,7 @@ HTML;
             $price=$english?'€'.number_format($property['rent_cents']/100,2,'.',',').' / month':number_format($property['rent_cents']/100,2,',','.').' €/mês';
             $catalog.='<article><h2>'.self::escape($property['name']).'</h2><p>'.self::escape($property['city']).' · '.$price.'</p><p>'.self::escape($property['description']).'</p></article>';
         }
-        $catalog.='<footer>'.($english?'Powered by Rendora · Property and rental management':'Uma plataforma Rendora · Gestão de imóveis e arrendamentos').'</footer></main>';
+        $catalog.='<footer>'.($english?'Powered by Rendora · Property and rental management':'Uma plataforma Rendora · Gestão de imóveis e arrendamentos').LegalPages::footer($english).'</footer></main>';
         if(!$english){
             $canonical=self::escape(self::origin().'/alojamentos/'.rawurlencode($slug));
             $shell=str_replace('</head>','<link rel="canonical" href="'.$canonical.'"></head>',$shell);
@@ -147,9 +175,11 @@ HTML;
     public static function sitemap(Response $response, Database $db): Response {
         $xml='<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">';
         if(!defined('RENDORA_PUBLIC_DEMO')){
-            $alternates=self::aboutAlternates(true);
-            foreach([self::ABOUT_PT,self::ABOUT_EN] as $path){
-                $xml.='<url><loc>'.self::escape(self::origin().$path).'</loc>'.$alternates.'</url>';
+            foreach([[self::ABOUT_PT,self::ABOUT_EN],[self::FEATURES_PT,self::FEATURES_EN]] as [$ptPath,$enPath]){
+                $alternates=self::alternates($ptPath,$enPath,true);
+                foreach([$ptPath,$enPath] as $path){
+                    $xml.='<url><loc>'.self::escape(self::origin().$path).'</loc>'.$alternates.'</url>';
+                }
             }
             $companies=$db->all("SELECT c.slug FROM companies c WHERE EXISTS (SELECT 1 FROM properties p WHERE p.company_id=c.id AND p.published=1 AND p.type IN ('APARTMENT','ROOM')) ORDER BY c.slug");
             foreach($companies as $company){
@@ -167,11 +197,11 @@ HTML;
         return $response->withHeader('Content-Type','text/plain; charset=utf-8');
     }
 
-    private static function aboutAlternates(bool $xml): string {
+    private static function alternates(string $ptPath, string $enPath, bool $xml): string {
         $prefix=$xml?'xhtml:':'';
         $end=$xml?'/>' : '>';
         $links='';
-        foreach(['pt-PT'=>self::ABOUT_PT,'en'=>self::ABOUT_EN,'x-default'=>self::ABOUT_PT] as $language=>$path){
+        foreach(['pt-PT'=>$ptPath,'en'=>$enPath,'x-default'=>$ptPath] as $language=>$path){
             $links.='<'.$prefix.'link rel="alternate" hreflang="'.$language.'" href="'.self::escape(self::origin().$path).'"'.$end;
         }
         return $links;
