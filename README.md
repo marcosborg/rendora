@@ -18,6 +18,8 @@ A arquitetura inicialmente proposta foi ajustada ao alojamento indicado: React +
 - Conversas privadas com anexos e leitura, comunicados, lembretes no portal e emails por fila cron/Resend.
 - Portais de morador e proprietário; interface responsiva, API versionada, OpenAPI e cliente TypeScript para futura app.
 
+O projecto móvel para inquilinos tem instruções de ensaio em [apps/mobile](apps/mobile/README.md).
+
 ## Executar localmente
 
 Requisitos de desenvolvimento: PHP 8.2+ (PDO SQLite, cURL, mbstring, iconv, fileinfo, OpenSSL), Composer e Node.js 22.12+.

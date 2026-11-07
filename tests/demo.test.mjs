@@ -81,6 +81,15 @@ test('packaged public demo isolates roles, integrations and database generations
 
   const manager = await login('gestor@demo.homealone.pt', 'ADMIN');
   const resident = await login('morador@demo.homealone.pt', 'RESIDENT');
+  const tenantApp=await req('/auth/demo',{method:'POST',body:{email:'morador@demo.homealone.pt',client:'resident-app'}});
+  assert.equal(tenantApp.status,200);
+  assert.equal(tenantApp.headers.get('set-cookie'),null);
+  const {token}=await tenantApp.json();
+  assert.match(token,/^resident_[a-f0-9]{64}$/);
+  assert.equal((await req('/contracts',{headers:{Authorization:`Bearer ${token}`}})).status,200);
+  assert.equal((await req('/tickets',{method:'POST',headers:{Authorization:`Bearer ${token}`},body:{}})).status,403);
+  assert.equal((await req('/auth/demo',{method:'POST',body:{email:'gestor@demo.homealone.pt',client:'resident-app'}})).status,403);
+  assert.equal((await req('/settings/bank-transfer', { session: manager })).status, 404);
   const owner = await login('proprietario@demo.homealone.pt', 'OWNER');
   const tech = await login('tecnico@demo.homealone.pt', 'TECHNICIAN');
   const porto = await login('gestor@demo.porto.pt', 'ADMIN', 'company-porto');

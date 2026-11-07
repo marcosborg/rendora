@@ -1340,7 +1340,7 @@ export interface components {
             /** Format: password */
             password: string;
             /** @enum {string} */
-            client?: "web" | "mobile";
+            client?: "web" | "mobile" | "resident-app";
         };
         Session: {
             /** @description Only returned when client=mobile. Store in OS secure storage. */
