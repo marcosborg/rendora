@@ -904,7 +904,7 @@
     "vendor/vlucas/phpdotenv/src/Util/Str.php": "0e488e38976bb2e4277d4b37e8c33d1791ab14034d01c66c2aa868254561a43c",
     "vendor/vlucas/phpdotenv/src/Validator.php": "e37baadefdfd1c0e9cc58418054d48fb40a42b4e7efaadb977044560fbeacaa7",
     "deploy/config.example.json": "8f79428971ae79a3f16b77f9ed4009901f8202858ec0fcd56d2b7d135a57bbf2",
-    "deploy/cpanel.php": "f76a117dfb75f99120df4443215d27315ad3aa72ca21807acd7d9c417d1f7039",
+    "deploy/cpanel.php": "ac45b02b15eb561268d19bccc0960327b77e228b463b972c82590a5872e9ed72",
     "deploy/cpanel.sh": "801b850b501d5a77d1c5449d889ef50858b1a082aa65d11b34bbfb5c09eb1731",
     "deploy/demo.php": "19a4fd665979add3478f8df8ffb6178e539f38e160580dcd8da297dcc062480a",
     "deploy/web.php": "81c0ed721a6c4d4a8ed12b60c3cf8d548c866292a460cec61161a0544b64197e",

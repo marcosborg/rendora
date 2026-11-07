@@ -55,7 +55,25 @@ function rendoraDeploy(string $repository,string $accountHome): array {
             if(is_file($dbPath)){
                 $pdo=new PDO('sqlite:'.$dbPath);$pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
                 $backup=$private.'/storage/backups/pre-deploy-'.gmdate('Ymd-His').'-'.bin2hex(random_bytes(4)).'.sqlite';
-                $pdo->exec('VACUUM INTO '.$pdo->quote($backup));chmod($backup,0600);$pdo=null;
+                // Reserve the writer lock while copying the rollback-mode database.
+                // A WAL database requires a different backup strategy.
+                $pdo->exec('PRAGMA busy_timeout=10000');
+                $pdo->exec('BEGIN IMMEDIATE');
+                try {
+                    if(strtolower($pdo->query('PRAGMA journal_mode')->fetchColumn())==='wal'){
+                        throw new RuntimeException('O backup pré-deploy exige uma base SQLite sem WAL.');
+                    }
+                    $copy($dbPath,$backup);
+                    chmod($backup,0600);
+                    $snapshot=new PDO('sqlite:'.$backup);
+                    if($snapshot->query('PRAGMA integrity_check')->fetchColumn()!=='ok'){
+                        throw new RuntimeException('A cópia SQLite falhou a verificação de integridade.');
+                    }
+                    $snapshot=null;
+                } finally {
+                    $pdo->exec('ROLLBACK');
+                }
+                $pdo=null;
             }
         }
         file_put_contents($private.'/storage/deploy.maintenance','Deployment in progress');
