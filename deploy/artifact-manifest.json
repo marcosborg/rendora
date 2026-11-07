@@ -931,6 +931,7 @@
     "docs/EMPRESAS.md": "419b1ea3afbe76a88992dea03d70a128d7216131f183cb10526993eff186ffcc",
     "docs/MYSQL_DEMO_TRIAL.md": "d9a5338118f636bef42978167085bb6224a26a1ee607d2fa05fda98310bace33",
     "docs/PAYPAL_SANDBOX.md": "1f1e589bfe1e5dfa13207b9c13f8d40851193a0f027888aca741bc785f25c426",
+    "docs/ROADMAP.md": "e821f93ea8a3753542eebb4c5fe6abcbb9a9f0cd5c091b7debdf01e341c50c14",
     "docs/VALIDATION.md": "ed300509d17896fb9f6a76c8db18cd73d000a5b13f689ebb5b07bdfc685a999e",
     "docs/screenshots/dashboard.jpg": "b13c6a298e347e4d2dc6276bfca9e4023fea14dba324206978882f738ca57a05",
     "docs/screenshots/portal-morador-mobile.jpg": "124362454f1c5620da6dc43c03b76b335c47e5b1438ef686618496017d55a3c1",
@@ -944,7 +945,7 @@
     "composer.lock": "ea20ae6be9a615abf6607250279a23d81458df755b2c634dbde63a9e5c50fcbe",
     ".env.example": "df328f475be949d2ac6bb4409d726f20367becc7b53cfea9ba4b95c3a3f23546",
     ".htaccess": "fa28d421a28ed9b6f4b997d5119c2b8adbacff6e2dd119a179b71230f9664934",
-    "public/app.html": "247733aa1afc445ff720c9412d8b191d1dc6fd8669c9e7cddaae1e07b81f8372",
+    "public/app.html": "730f8e252b03b370a6f52136452a74cb181bb41f215bcb5f71ede74ad35c34ea",
     "public/openapi.json": "b9813dfa0116d2e56d747d446fffde6115c4f8cce8b6c883a9f801f866a3503f",
     "public/docs.html": "ec138347b44b918bed64ddfa5c040f7855ae90015a08793c86400fac769bb630",
     "public/.htaccess": "31fba7d7094c0104f3ded7bc13c00f2f5d314efb464abf4958350d16cf3d2bf9",
@@ -953,7 +954,7 @@
     "public/brand/rendora-light.svg": "b0807cbbe1d47cd6bb80479ff0893828ce6b02008ae9a8b22b334d10ab9ed9a7",
     "public/brand/rendora-symbol-dark.svg": "9dd2f5d4aeb5ced74b4116f595b537db838f44de259c56c910eabef7f04a5ed5",
     "public/brand/rendora-symbol-light.svg": "99c69b1b0d6a24b1d6d53bd724a2314cbc50c54d2ddf78a3e095185a79e36262",
-    "public/assets/app-BW91rzcC.js": "781ee685c1e50810f9994575aab583a28836205926ca162475372f3dbd3bb658",
-    "public/assets/app-DwW9vfyB.css": "fc2e916d8e69f65f3db2a16da48ec580bc3d18f85ea75f4d1cce82f0ddfc77a8"
+    "public/assets/app-BHkMq7G0.js": "b6364565e7950fc5bd58bae2f54ed63b66bb566475eb35a279246274612c4640",
+    "public/assets/app-BDy7HTXj.css": "98f78def18947315e9ca093bb9179332ae032af7b53f7cfce82ee40312c2725c"
   }
 }
