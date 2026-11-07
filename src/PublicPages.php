@@ -15,9 +15,13 @@ final class PublicPages {
             ?'Manage properties, rental contracts, rent and maintenance in one place. Explore the Rendora demo.'
             :'Gere imóveis, contratos de arrendamento, rendas e manutenção num só lugar. Experimenta a demo da Rendora.';
         $url=self::escape(self::origin().($english?self::ABOUT_EN:self::ABOUT_PT));
-        $switch=$english?self::ABOUT_PT:self::ABOUT_EN;
-        $switchLanguage=$english?'pt-PT':'en';
-        $switchText=$english?'Português':'English';
+        $languageLabel=$english?'Language':'Idioma';
+        $pt=$english
+            ?'<a href="/sobre" lang="pt-PT" hreflang="pt-PT" aria-label="Português">PT</a>'
+            :'<span lang="pt-PT" aria-current="true" aria-label="Português">PT</span>';
+        $en=$english
+            ?'<span lang="en" aria-current="true" aria-label="English">EN</span>'
+            :'<a href="/en/about" lang="en" hreflang="en" aria-label="English">EN</a>';
         $login=$english?'/en/':'/';
         $loginLabel=$english?'Sign in':'Iniciar sessão';
         $demo=(defined('RENDORA_PUBLIC_DEMO')?'':'https://demo.rendora.pt').$login;
@@ -74,6 +78,10 @@ final class PublicPages {
         header .wrap,nav{display:flex;align-items:center;flex-wrap:wrap;gap:1rem}
         header .wrap{justify-content:space-between;padding-block:1rem}header img{display:block;width:8.5rem;height:auto}
         nav a{font-weight:650;text-underline-offset:.2em}
+        .language-switch{display:inline-flex;align-items:center;gap:2px;padding:2px;border:1px solid #d5e5e0;border-radius:999px;background:#f3f8f6}
+        .language-switch>*{display:grid;place-items:center;min-width:36px;min-height:28px;border-radius:999px;font-size:.75rem;font-weight:700;text-decoration:none}
+        .language-switch a:hover{background:#e0eeea}
+        .language-switch [aria-current]{background:#125c59;color:#fff}
         .hero{padding-block:clamp(3rem,10vw,7rem) 3rem;max-width:52rem}
         h1{font-size:clamp(2.5rem,7vw,5.5rem);line-height:1.02;letter-spacing:-.055em;margin:0}
         p{line-height:1.65;color:#3c5956}.hero p{max-width:39rem;font-size:1.2rem;margin-block:1.5rem}
@@ -87,7 +95,7 @@ final class PublicPages {
 <body>
     <header><div class="wrap">
         <img src="/brand/rendora-light.svg" alt="Rendora" width="136">
-        <nav aria-label="$navLabel"><a href="$switch" lang="$switchLanguage" hreflang="$switchLanguage">$switchText</a><a href="$login">$loginLabel</a></nav>
+        <nav aria-label="$navLabel"><div class="language-switch" role="group" aria-label="$languageLabel">$pt$en</div><a href="$login">$loginLabel</a></nav>
     </div></header>
     <main class="wrap">
         <section class="hero"><h1>$headline</h1><p>$intro</p><a class="cta" href="$demo">$demoLabel</a></section>

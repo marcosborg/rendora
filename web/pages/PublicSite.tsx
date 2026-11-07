@@ -1,8 +1,9 @@
+import { LanguageSwitch } from '../LanguageSwitch';
 import { useState } from 'react';
 import { ArrowRight, ArrowUpRight, BedDouble, Check, HeartHandshake, House, KeyRound, Mail, MapPin, Maximize2, Phone, ShieldCheck } from 'lucide-react';
 import { Brand } from '../Brand';
 import { api, money, type Row } from '../api';
-import { catalogPath, homePath, otherLanguagePath, tr as copy } from '../locale';
+import { catalogPath, homePath, tr as copy } from '../locale';
 import { Empty, Loading, useApp, useData } from '../ui';
 
 const monthly = copy('/mês', '/month');
@@ -76,9 +77,7 @@ export function PublicSite({ slug }: { slug: string }) {
       <nav style={{ flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8 }}>
         <a href="#alojamentos">{copy('As nossas casas', 'Our homes')}</a>
         <a href="#sobre">{copy('A nossa forma de cuidar', 'How we support you')}</a>
-        <a className="public-login" href={otherLanguagePath()} hrefLang={copy('en', 'pt-PT')} lang={copy('en', 'pt-PT')}>
-          {copy('English', 'Português')}
-        </a>
+        <LanguageSwitch/>
         <a className="public-login" href={homePath}>{copy('Área do morador', 'Resident portal')}<ArrowUpRight size={16}/></a>
       </nav>
     </header>
