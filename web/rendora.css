@@ -163,3 +163,10 @@ button:focus-visible,a:focus-visible { outline:3px solid var(--focus); outline-o
 }
 
 .demo-profile-switch:hover { background: #eaf4f0; }
+
+.legal-links { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem .9rem; font-size:.8rem; }
+.legal-links a { color:inherit; text-decoration:underline; text-underline-offset:.2em; }
+.login-legal { width:100%; text-align:center; padding:0 1rem 1rem; }
+.login-legal .login-secure { justify-content:center; }
+.login-legal .legal-links { justify-content:center; margin-top:.6rem; }
+.public-footer > .legal-links { grid-column:1 / -1; }

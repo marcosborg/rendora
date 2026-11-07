@@ -78,6 +78,7 @@ final class PublicPages {
         $alternates=self::alternates($ptPath,$enPath,false);
         $image=self::escape(self::origin().'/brand/rendora-light.svg');
         $locale=$english?'en_GB':'pt_PT';
+        $legal=LegalPages::footer($english);
         $html=<<<HTML
 <!doctype html>
 <html lang="$language">
@@ -116,7 +117,7 @@ final class PublicPages {
         .cta:hover{background:#0c4946}
         .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr));gap:1rem;margin-block:0 4rem}
         article{border:1px solid #d5e5e0;border-radius:1rem;background:#fff;padding:1.4rem}
-        h2{font-size:1.2rem;margin:0}article p{margin-bottom:0}footer{border-top:1px solid #d5e5e0;padding-block:1.25rem}
+        h2{font-size:1.2rem;margin:0}article p{margin-bottom:0}footer{border-top:1px solid #d5e5e0;padding-block:1.25rem}.legal-links{display:flex;gap:.5rem 1rem;flex-wrap:wrap}
     </style>
 </head>
 <body>
@@ -128,7 +129,7 @@ final class PublicPages {
         <section class="hero"><h1>$headline</h1><p>$intro</p><a class="cta" href="$demo">$demoLabel</a></section>
         <section class="features" aria-label="$featuresLabel">$cards</section>
     </main>
-    <footer><div class="wrap">Rendora</div></footer>
+    <footer><div class="wrap">$legal</div></footer>
 </body>
 </html>
 HTML;
@@ -161,7 +162,7 @@ HTML;
             $price=$english?'€'.number_format($property['rent_cents']/100,2,'.',',').' / month':number_format($property['rent_cents']/100,2,',','.').' €/mês';
             $catalog.='<article><h2>'.self::escape($property['name']).'</h2><p>'.self::escape($property['city']).' · '.$price.'</p><p>'.self::escape($property['description']).'</p></article>';
         }
-        $catalog.='<footer>'.($english?'Powered by Rendora · Property and rental management':'Uma plataforma Rendora · Gestão de imóveis e arrendamentos').'</footer></main>';
+        $catalog.='<footer>'.($english?'Powered by Rendora · Property and rental management':'Uma plataforma Rendora · Gestão de imóveis e arrendamentos').LegalPages::footer($english).'</footer></main>';
         if(!$english){
             $canonical=self::escape(self::origin().'/alojamentos/'.rawurlencode($slug));
             $shell=str_replace('</head>','<link rel="canonical" href="'.$canonical.'"></head>',$shell);

@@ -129,6 +129,10 @@ final class Application {
         $app->post('/api/v1/platform/plans',function(Request $r,Response $res)use($auth,$db,$json,$body){$u=$auth->user($r);if(!$u['platform_admin'])throw new HttpError(403,'Acesso reservado.');$d=$body($r);return $json($res,$db->insert('plans',['name'=>Validate::text($d,'name',2,100),'stripe_price_id'=>!empty($d['stripe_price_id'])?Validate::text($d,'stripe_price_id',6,100):null,'property_limit'=>Validate::integer($d,'property_limit',1),'member_limit'=>Validate::integer($d,'member_limit',1)]));});
         $app->get('/sitemap.xml',fn(Request $r,Response $res)=>PublicPages::sitemap($res,$db));
         $app->get('/robots.txt',fn(Request $r,Response $res)=>PublicPages::robots($res));
+        foreach(LegalPages::routes() as $page){
+            $app->get('/'.$page[0],fn(Request $r,Response $res)=>LegalPages::render($res,$page,false));
+            $app->get('/'.$page[1],fn(Request $r,Response $res)=>LegalPages::render($res,$page,true));
+        }
         $app->get('/sobre',fn(Request $r,Response $res)=>PublicPages::about($res,false));
         $app->get('/en/about',fn(Request $r,Response $res)=>PublicPages::about($res,true));
         $app->get(PublicPages::FEATURES_PT,fn(Request $r,Response $res)=>PublicPages::about($res,false,true));

@@ -1,4 +1,5 @@
 import { LanguageSwitch } from '../LanguageSwitch';
+import { LegalLinks } from '../LegalLinks';
 import { useState } from 'react';
 import { ArrowRight, ArrowUpRight, BedDouble, Check, HeartHandshake, House, KeyRound, Mail, MapPin, Maximize2, Phone, ShieldCheck } from 'lucide-react';
 import { Brand } from '../Brand';
@@ -184,6 +185,7 @@ export function PublicSite({ slug }: { slug: string }) {
         <span>{copy('Uma plataforma', 'Powered by')} <Brand/></span>
         <a href={homePath}>{copy('Área reservada', 'Sign in')}<ArrowUpRight size={13}/></a>
       </div>
+      <LegalLinks/>
     </footer>
   </div>;
 }

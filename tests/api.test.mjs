@@ -49,6 +49,32 @@ test('bilingual public pages have reciprocal URLs and login stays out of the ind
   }
   assert.doesNotMatch(sitemap, /\/en\/properties\//);
 });
+test('legal drafts have localised links and stay out of the index', async () => {
+  const pairs = [
+    ['/legal', '/en/legal'],
+    ['/privacidade', '/en/privacy'],
+    ['/cookies', '/en/cookies'],
+    ['/termos', '/en/terms'],
+  ];
+  for (const [pt, en] of pairs) {
+    for (const [route, language, alternate] of [[pt, 'pt-PT', en], [en, 'en', pt]]) {
+      const response = await fetch(base + route);
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get('x-robots-tag'), 'noindex');
+      const html = await response.text();
+      assert.ok(html.includes(`<html lang="${language}">`));
+      assert.ok(html.includes(`href="${alternate}"`));
+      assert.ok(html.includes('mailto:info@rendora.pt'));
+      assert.match(html, /Minuta para revisão|Draft for review/);
+    }
+  }
+  for (const [route, column] of [['/sobre', 0], ['/en/about', 1], ['/alojamentos/casa-lisboa', 0], ['/en/properties/casa-lisboa', 1]]) {
+    const html = await (await fetch(base + route)).text();
+    for (const pair of pairs) assert.ok(html.includes(`href="${pair[column]}"`));
+  }
+  const sitemap = await (await fetch(base + '/sitemap.xml')).text();
+  for (const pair of pairs) for (const route of pair) assert.ok(!sitemap.includes(`${base}${route}</loc>`));
+});
 test('anonymous access and cross-company access fail',async()=>{assert.equal((await req('/properties',{},null)).status,401);assert.equal((await req('/properties',{},resident,'company-porto')).status,403);const rows=await req('/properties',{},porto,'company-porto');assert.equal(rows.data.length,1);});
 test('real JSON property creation, edit and reload persist',async()=>{let r=await post('/properties',{name:'HTTP test apartment',type:'APARTMENT',address:'Rua de Teste, 10',city:'Lisboa',rent_cents:110000,area:70,bedrooms:2,description:'Apartamento para testar a persistência.',parent_id:null,owner_id:'u-owner',published:false,photos:[],amenities:['Mobilado']});assert.equal(r.status,200,JSON.stringify(r.data));createdProperty=r.data.id;r=await req(`/properties/${createdProperty}`,{method:'PATCH',body:JSON.stringify({...r.data,name:'HTTP test updated',photos:[],amenities:['Mobilado']})});assert.equal(r.status,200,JSON.stringify(r.data));const list=(await req('/properties')).data;assert.equal(list.find(p=>p.id===createdProperty).name,'HTTP test updated');});
 test('CSRF protection rejects cookie mutation with missing token',async()=>{const r=await req('/charges/generate',{method:'POST',headers:{'X-CSRF-Token':''},body:JSON.stringify({period:'2035-01'})});assert.equal(r.status,403);});

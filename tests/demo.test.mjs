@@ -56,6 +56,12 @@ test('packaged public demo isolates roles, integrations and database generations
   t.diagnostic(`${healthData.storage} HTTP ${healthData[healthData.storage + '_version']}`);
   assert.equal((await (await req('/config')).json()).public_demo, true);
   assert.equal((await req('/properties')).status, 401);
+  for (const route of ['/legal', '/privacidade', '/cookies', '/termos', '/en/legal', '/en/privacy', '/en/cookies', '/en/terms']) {
+    const response = await fetch(`http://127.0.0.1:${port}${route}`);
+    assert.equal(response.status, 200, route);
+    assert.equal(response.headers.get('x-robots-tag'), 'noindex');
+    assert.match(await response.text(), /mailto:info@rendora.pt/);
+  }
   for (const slug of ['casa-lisboa', 'porto-living']) assert.equal((await req('/public/' + slug)).status, 200);
 
   async function login(email, role, company = 'company-lisbon') {
