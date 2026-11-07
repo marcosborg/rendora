@@ -8,6 +8,7 @@ import { once } from 'node:events';
 import { test } from 'node:test';
 
 test('packaged public demo isolates roles, integrations and database generations', async t => {
+  const mysql = Boolean(process.env.RENDORA_TRIAL_MYSQL_DSN);
   const tmp = await mkdtemp(path.join(tmpdir(), 'rendora-demo-'));
   const packaged = execFileSync('node', ['scripts/package.mjs', '--demo'], { encoding: 'utf8' }).trim();
   t.after(async () => {
@@ -23,10 +24,11 @@ test('packaged public demo isolates roles, integrations and database generations
   await once(socket, 'listening');
   const { port } = socket.address();
   await new Promise(resolve => socket.close(resolve));
-  const server = spawn('php', ['-S', `127.0.0.1:${port}`, '-t', publicDir, path.join(publicDir, 'index.php')], {
+  const startServer = useMysql => spawn('php', ['-S', `127.0.0.1:${port}`, '-t', publicDir, useMysql ? path.resolve('tests/mysql-demo-router.php') : path.join(publicDir, 'index.php')], {
     env: { ...process.env, APP_ENV: 'production', DEMO_MODE: 'false', COOKIE_SECURE: 'false', DB_PATH: path.join(tmp, 'main.sqlite'), ALLOW_LIVE_PAYMENTS: 'true' },
     stdio: ['ignore', 'ignore', 'pipe'],
   });
+  let server = startServer(mysql);
   let errors = '';
   server.stderr.on('data', chunk => { errors += chunk; });
   t.after(() => server.kill());
@@ -40,14 +42,18 @@ test('packaged public demo isolates roles, integrations and database generations
         ...headers,
       }, body: body && JSON.stringify(body),
     });
-  let health;
-  for (let i = 0; i < 50; i++) {
-    health = await req('/health').catch(() => null);
-    if (health) break;
-    await new Promise(resolve => setTimeout(resolve, 50));
+  async function waitForHealth() {
+    for (let i = 0; i < 50; i++) {
+      const health = await req('/health').catch(() => null);
+      if (health?.ok) return health;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    assert.fail(errors || 'Demo did not become healthy.');
   }
-  assert.equal(health?.status, 200, errors);
-  t.diagnostic(`SQLite HTTP ${(await health.json()).sqlite_version}`);
+  const health = await waitForHealth();
+  const healthData = await health.json();
+  assert.equal(healthData.storage, mysql ? 'mysql' : 'sqlite');
+  t.diagnostic(`${healthData.storage} HTTP ${healthData[healthData.storage + '_version']}`);
   assert.equal((await (await req('/config')).json()).public_demo, true);
   assert.equal((await req('/properties')).status, 401);
   for (const slug of ['casa-lisboa', 'porto-living']) assert.equal((await req('/public/' + slug)).status, 200);
@@ -80,7 +86,9 @@ test('packaged public demo isolates roles, integrations and database generations
   assert.equal((await req('/contracts/ct-miguel', { session: manager })).status, 200);
   assert.equal((await req('/contracts/ct-miguel', { session: resident })).status, 404);
   assert.equal((await req('/contracts/ct-ines', { session: resident })).status, 200);
-  const ticket = await (await req('/tickets/t-water', { session: resident })).json();
+  const ticketResponse = await req('/tickets/t-water', { session: resident });
+  assert.equal(ticketResponse.status, 200, errors);
+  const ticket = await ticketResponse.json();
   assert.ok(ticket.notes.every(note => !note.internal));
   assert.equal((await req('/reports/export', { session: owner })).status, 200);
   assert.equal((await req('/reports/export', { session: resident })).status, 403);
@@ -96,6 +104,28 @@ test('packaged public demo isolates roles, integrations and database generations
   assert.equal((await req('/auth/me', { headers: { Cookie: resident.cookie.replace('__Host-rendora_demo', 'ha_session') } })).status, 401);
   assert.equal((await req('/auth/logout', { method: 'POST', session: tech })).status, 200);
   assert.equal((await req('/auth/me', { session: tech })).status, 401);
+  if (mysql) {
+    const worker = async () => {
+      const child = spawn('php', ['tests/contract-worker.php']);
+      let stdout = '';
+      let stderr = '';
+      child.stdout.on('data', chunk => { stdout += chunk; });
+      child.stderr.on('data', chunk => { stderr += chunk; });
+      const [code] = await once(child, 'exit');
+      assert.equal(code, 0, stderr);
+      return Number(stdout);
+    };
+    assert.deepEqual((await Promise.all([worker(), worker()])).sort(), [200, 409]);
+
+    const stopped = once(server, 'exit');
+    server.kill();
+    await stopped;
+    server = startServer(false);
+    assert.equal((await (await waitForHealth()).json()).storage, 'sqlite');
+    assert.equal((await req('/auth/me', { session: resident })).status, 401);
+    await login('morador@demo.homealone.pt', 'RESIDENT');
+    return;
+  }
   const next = 'demo-20260101000001.sqlite';
   snapshot(tmp, next);
   await rename(path.join(tmp, next), path.join(storage, next + '.upload'));

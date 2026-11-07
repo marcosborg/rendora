@@ -8,7 +8,7 @@ final class Operations {
         return array_values(array_filter($rows,fn($t)=>$s->allowed(fn()=>$s->ticket($t['id']))));
     }
     public function ticket(Scope $s,string $id): array {
-        $t=$s->ticket($id);$internal=$s->staff()||$s->role==='TECHNICIAN';$t['notes']=$this->db->all('SELECT n.*,u.name author_name FROM ticket_notes n JOIN users u ON u.id=n.author_id WHERE n.company_id=? AND n.ticket_id=? AND (n.internal=0 OR CAST(? AS INTEGER)=1) ORDER BY n.created_at',[$s->companyId,$id,$internal?1:0]);return $t;
+        $t=$s->ticket($id);$internal=$s->staff()||$s->role==='TECHNICIAN';$t['notes']=$this->db->all('SELECT n.*,u.name author_name FROM ticket_notes n JOIN users u ON u.id=n.author_id WHERE n.company_id=? AND n.ticket_id=? AND (n.internal=0 OR (? + 0)=1) ORDER BY n.created_at',[$s->companyId,$id,$internal?1:0]);return $t;
     }
     public function createTicket(Scope $s,array $d): array {
         $s->requireRoles('ADMIN','MANAGER','RESIDENT','OWNER');$p=$s->property(Validate::text($d,'property_id'));
@@ -41,8 +41,14 @@ final class Operations {
         foreach($ids as $id){$member=$s->member($id);if(!$s->staff()&&!in_array($member['role'],['ADMIN','MANAGER'])){$allowed=false;if($property){$p=$s->property($property);if($s->role==='RESIDENT'&&$member['role']==='OWNER'&&$p['owner_id']===$id)$allowed=true;if($s->role==='OWNER'&&$member['role']==='RESIDENT')$allowed=(bool)$this->db->one("SELECT c.id FROM contracts c JOIN contract_residents cr ON cr.contract_id=c.id JOIN contacts co ON co.id=cr.contact_id WHERE c.company_id=? AND c.property_id=? AND co.user_id=? AND c.status='ACTIVE' AND c.start_date<=business_today() AND COALESCE(c.end_date,'9999-12-31')>=business_today()",[$s->companyId,$property,$id]);}if(!$allowed)throw new HttpError(403,'Associe um alojamento partilhado com este destinatário.');}}
         return $this->db->transaction(function()use($s,$d,$ids,$property){$c=$this->db->insert('conversations',['company_id'=>$s->companyId,'subject'=>Validate::text($d,'subject',2,200),'property_id'=>$property?:null]);foreach(array_unique([...$ids,$s->user['id']]) as $id)$this->db->run('INSERT INTO participants(company_id,conversation_id,user_id) VALUES(?,?,?)',[$s->companyId,$c['id'],$id]);if(!empty($d['body']))$this->send($s,$c['id'],$d);return $c;});
     }
-    public function messages(Scope $s,string $id): array {$s->conversation($id);return $this->db->all('SELECT m.*,u.name author_name,(SELECT COUNT(*) FROM message_reads r WHERE r.message_id=m.id AND r.user_id<>m.author_id) read_count FROM messages m JOIN users u ON u.id=m.author_id WHERE m.company_id=? AND m.conversation_id=? ORDER BY m.created_at,m.rowid',[$s->companyId,$id]);}
-    public function markRead(Scope $s,string $id): void {$s->conversation($id);$this->db->run('INSERT OR IGNORE INTO message_reads(message_id,user_id) SELECT id,? FROM messages WHERE company_id=? AND conversation_id=?',[$s->user['id'],$s->companyId,$id]);}
+    public function messages(Scope $s,string $id): array {$s->conversation($id);return $this->db->all('SELECT m.id,m.company_id,m.conversation_id,m.author_id,m.body,m.created_at,u.name author_name,(SELECT COUNT(*) FROM message_reads r WHERE r.message_id=m.id AND r.user_id<>m.author_id) read_count FROM messages m JOIN users u ON u.id=m.author_id WHERE m.company_id=? AND m.conversation_id=? ORDER BY m.created_at,'.($this->db->engine()==='mysql'?'m.message_sequence':'m.rowid'),[$s->companyId,$id]);}
+    public function markRead(Scope $s,string $id): void {
+        $s->conversation($id);
+        $user=$s->user['id'];
+        $this->db->transaction(function()use($s,$id,$user){
+            $this->db->run('INSERT INTO message_reads(message_id,user_id) SELECT m.id,? FROM messages m WHERE m.company_id=? AND m.conversation_id=? AND NOT EXISTS (SELECT 1 FROM message_reads r WHERE r.message_id=m.id AND r.user_id=?)',[$user,$s->companyId,$id,$user]);
+        });
+    }
     public function send(Scope $s,string $id,array $d): array {$c=$s->conversation($id);return $this->db->transaction(function()use($s,$id,$d,$c){$m=$this->db->insert('messages',['company_id'=>$s->companyId,'conversation_id'=>$id,'author_id'=>$s->user['id'],'body'=>Validate::text($d,'body',1,10000)]);foreach($this->db->all('SELECT user_id FROM participants WHERE conversation_id=? AND user_id<>?',[$id,$s->user['id']]) as $p)$this->notify($s->companyId,$p['user_id'],'Nova mensagem: '.$c['subject'],'Tem uma nova mensagem no portal.','message:'.$m['id'].':'.$p['user_id']);return $m;});}
     public function notify(string $company,string $user,string $title,string $body,string $key,?string $charge=null): void {
         $this->db->transaction(function()use($company,$user,$title,$body,$key,$charge){if($this->db->one('SELECT id FROM notifications WHERE dedupe_key=?',[$key]))return;$n=$this->db->insert('notifications',['company_id'=>$company,'user_id'=>$user,'title'=>$title,'body'=>$body,'dedupe_key'=>$key,'charge_id'=>$charge]);$this->db->insert('jobs',['company_id'=>$company,'type'=>'NOTIFICATION','payload'=>json_encode(['notification_id'=>$n['id']]),'dedupe_key'=>'email:'.$key]);});

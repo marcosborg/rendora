@@ -57,7 +57,10 @@ final class Rentals {
                 if($date<Database::today())throw new HttpError(422,'As alterações de renda devem ter efeitos no futuro.');
                 $affected=$this->db->all('SELECT * FROM charges WHERE contract_id=? AND period>=?',[$id,substr($date,0,7)]);
                 foreach($affected as $ch)if($this->db->one('SELECT id FROM payments WHERE charge_id=?',[$ch['id']])||$this->db->one("SELECT id FROM checkouts WHERE charge_id=? AND status IN('CREATING','OPEN','PROCESSING','SUCCEEDED')",[$ch['id']]))throw new HttpError(409,'Existem pagamentos ou operações em curso a partir desta data. Reconcilie os movimentos antes de alterar a renda.');
-                $this->db->run('INSERT INTO rent_changes(id,company_id,contract_id,effective_date,rent_cents) VALUES(?,?,?,?,?) ON CONFLICT(contract_id,effective_date) DO UPDATE SET rent_cents=excluded.rent_cents',[Database::id(),$s->companyId,$id,$date,Validate::integer($d,'rent_cents',1)]);
+                $rent=Validate::integer($d,'rent_cents',1);
+                $change=$this->db->one('SELECT id FROM rent_changes WHERE contract_id=? AND effective_date=?',[$id,$date]);
+                if($change)$this->db->run('UPDATE rent_changes SET rent_cents=? WHERE id=?',[$rent,$change['id']]);
+                else $this->db->insert('rent_changes',['company_id'=>$s->companyId,'contract_id'=>$id,'effective_date'=>$date,'rent_cents'=>$rent]);
                 foreach($affected as $ch){$calc=Finance::monthlyAmount($c,$ch['period'],$this->db->all('SELECT * FROM rent_changes WHERE contract_id=?',[$id]));$this->db->run('UPDATE charges SET amount_cents=?,confirmed=? WHERE id=?',[$calc['amount_cents'],$calc['confirmed']?1:0,$ch['id']]);}
             }else{
                 $end=Validate::date($d,'end_date');if($end<$c['start_date'])throw new HttpError(422,'Data de fim inválida.');

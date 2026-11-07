@@ -12,6 +12,14 @@ function env(string $key, string $default=''): string {
     $processValue=getenv($key);return $processValue!==false?(string)$processValue:(string)($_ENV[$key]??$default);
 }
 function database(): HomeAlone\Database {
+    $mysql=env('DB_MYSQL_DSN');
+    if($mysql!==''){
+        if(!str_starts_with($mysql,'mysql:'))throw new RuntimeException('DB_MYSQL_DSN inválido.');
+        return new HomeAlone\Database(new PDO($mysql,env('DB_MYSQL_USER'),env('DB_MYSQL_PASSWORD'),[
+            PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_EMULATE_PREPARES=>false,
+        ]));
+    }
     $path=env('DB_PATH','storage/homealone.sqlite');
     if(!str_starts_with($path,'/')&&!preg_match('/^[A-Za-z]:/',$path)&&$path!==':memory:') $path=dirname(__DIR__).'/'.$path;
     return new HomeAlone\Database($path);
