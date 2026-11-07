@@ -6,12 +6,12 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Message\ResponseInterface as Response;
 final class Application {
     public static function create(Database $db): \Slim\App {
-        $app=AppFactory::create();$auth=new Auth($db);$rentals=new Rentals($db);$finance=new Finance($db);$ops=new Operations($db);$admin=new Administration($db);$payments=new Payments($db);$docs=new Documents($db);
+        $app=AppFactory::create();$auth=new Auth($db);$rentals=new Rentals($db);$finance=new Finance($db);$ops=new Operations($db);$admin=new Administration($db);$payments=new Payments($db);$docs=new Documents($db);$bank=new BankTransfers($db);$paypal=new PayPalSandbox($db);
         $json=static function(Response $r,mixed $data,int $status=200):Response{$r->getBody()->write(json_encode($data,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR));return $r->withStatus($status)->withHeader('Content-Type','application/json; charset=utf-8')->withHeader('Cache-Control','no-store');};
         $body=static function(Request $r):array{$data=$r->getParsedBody();if(!is_array($data))return [];return $data;};
         $route=static function(string $method,string $path,callable $handler)use($app,$auth,$json,$body){$app->map([$method],'/api/v1'.$path,function(Request $r,Response $response,array $args)use($handler,$auth,$json,$body){$scope=$auth->scope($r);$result=$handler($scope,$body($r),$args,$r);return $result instanceof Response?$result:$json($response,$result??['ok'=>true]);});};
         $app->get('/api/v1/health',fn(Request $r,Response $res)=>$json($res,['status'=>$db->one('SELECT 1 ok')['ok']?'ok':'error','storage'=>$db->engine(),...(defined('RENDORA_PUBLIC_DEMO')?[$db->engine().'_version'=>$db->one($db->engine()==='mysql'?'SELECT VERSION() version':'SELECT sqlite_version() version')['version']]:[])]));
-        $app->get('/api/v1/config',fn(Request $r,Response $res)=>$json($res,['demo'=>env('DEMO_MODE')==='true'&&env('APP_ENV')!=='production','name'=>'Rendora','public_demo'=>defined('RENDORA_PUBLIC_DEMO')]));
+        $app->get('/api/v1/config',fn(Request $r,Response $res)=>$json($res,['demo'=>env('DEMO_MODE')==='true'&&env('APP_ENV')!=='production','name'=>'Rendora','public_demo'=>defined('RENDORA_PUBLIC_DEMO'),'bank_transfers'=>BankTransfers::enabled(),'paypal_sandbox'=>PayPalSandbox::enabled()]));
         $loginResponse=static function(Response $response,array $session,bool $mobile)use($json):Response{$cookie=Auth::cookieName().'='.$session['token'].'; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400'.(env('COOKIE_SECURE','true')==='true'?'; Secure':'');if(!$mobile)unset($session['token']);return $json($response,$session)->withAddedHeader('Set-Cookie',$cookie);};
         $app->post('/api/v1/auth/login',fn(Request $r,Response $res)=>$loginResponse($res,$auth->login($body($r),$r->getServerParams()['REMOTE_ADDR']??'unknown'),($body($r)['client']??'')==='mobile'));
         $app->post('/api/v1/auth/register',fn(Request $r,Response $res)=>$loginResponse($res,$auth->register($body($r),$r->getServerParams()['REMOTE_ADDR']??'unknown'),false));
@@ -105,6 +105,27 @@ final class Application {
         $route('GET','/audit',function($s)use($db){$s->requireRoles('ADMIN');return $db->all('SELECT a.*,u.name user_name FROM audit a JOIN users u ON u.id=a.user_id WHERE company_id=? ORDER BY created_at DESC LIMIT 200',[$s->companyId]);});
         $route('GET','/jobs',function($s)use($db){$s->requireRoles('ADMIN');return $db->all('SELECT id,type,status,attempts,available_at,last_error FROM jobs WHERE company_id=? ORDER BY created_at DESC LIMIT 100',[$s->companyId]);});
         $route('POST','/jobs/{id}/retry',function($s,$d,$a)use($db){$s->requireRoles('ADMIN');$s->row('jobs',$a['id']);$db->run("UPDATE jobs SET status='PENDING',attempts=0,available_at=CURRENT_TIMESTAMP WHERE id=? AND company_id=? AND status='FAILED'",[$a['id'],$s->companyId]);return ['ok'=>true];});
+        $proofFile=static function(Request $request): \Psr\Http\Message\UploadedFileInterface {
+            $file=$request->getUploadedFiles()['file']??null;
+            if(!$file instanceof \Psr\Http\Message\UploadedFileInterface)throw new HttpError(422,'Selecione um comprovativo.');
+            return $file;
+        };
+        $proofDownload=static function(array $file): Response {
+            [$path,$mime,$filename]=$file;
+            return (new \Slim\Psr7\Response())->withBody((new \Slim\Psr7\Factory\StreamFactory())->createStreamFromFile($path))
+                ->withHeader('Content-Type',$mime)->withHeader('Content-Disposition','attachment; filename="'.$filename.'"');
+        };
+        $route('GET','/contracts/{id}/bank-account',fn($s,$d,$a)=>$bank->rentAccount($s,$a['id']));
+        $route('PUT','/contracts/{id}/bank-account',fn($s,$d,$a)=>$bank->setRentAccount($s,$a['id'],$d));
+        $route('GET','/charges/{id}/bank-transfer',fn($s,$d,$a)=>$bank->rent($s,$a['id']));
+        $route('POST','/charges/{id}/bank-transfer',fn($s,$d,$a,$r)=>$bank->upload($s,$a['id'],$d,$proofFile($r)));
+        $route('GET','/settings/bank-transfer',fn($s)=>$bank->subscription($s));
+        $route('POST','/settings/bank-transfer',fn($s,$d,$a,$r)=>$bank->upload($s,null,$d,$proofFile($r)));
+        $route('GET','/bank-proofs/{id}',fn($s,$d,$a)=>$proofDownload($bank->download($s,$s->user,$a['id'])));
+        $route('POST','/bank-proofs/{id}/review',fn($s,$d,$a)=>$bank->review($s,$s->user,$a['id'],$d));
+        $app->get('/api/v1/platform/bank-proofs',fn(Request $r,Response $res)=>$json($res,$bank->platformProofs($auth->user($r))));
+        $app->get('/api/v1/platform/bank-proofs/{id}',fn(Request $r,Response $res,array $a)=>$proofDownload($bank->download(null,$auth->user($r),$a['id'])));
+        $app->post('/api/v1/platform/bank-proofs/{id}/review',fn(Request $r,Response $res,array $a)=>$json($res,$bank->review(null,$auth->user($r),$a['id'],$body($r))));
         $route('GET','/documents',fn($s,$d,$a,$r)=>$docs->list($s,$r->getQueryParams()['entity_type']??'',$r->getQueryParams()['entity_id']??''));
         $route('POST','/documents',function($s,$d,$a,$r)use($docs){$file=$r->getUploadedFiles()['file']??null;if(!$file)throw new HttpError(422,'Selecione um ficheiro.');return $docs->upload($s,Validate::text($d,'entity_type'),Validate::text($d,'entity_id'),$file);});
         $route('GET','/documents/{id}/download',function($s,$d,$a)use($docs){$doc=$docs->download($s,$a['id']);$res=new \Slim\Psr7\Response();$res->getBody()->write(file_get_contents($doc['path']));return $res->withHeader('Content-Type',$doc['mime_type'])->withHeader('Cache-Control','no-store')->withHeader('Content-Disposition',"attachment; filename*=UTF-8''".rawurlencode($doc['name']));});
@@ -117,6 +138,18 @@ final class Application {
                 else $db->insert('devices',['company_id'=>$s->companyId,'user_id'=>$s->user['id'],'token'=>$token,'platform'=>$platform]);
             });
             return ['registered'=>true,'push_enabled'=>false];
+        });
+        $route('GET','/charges/{id}/paypal-sandbox',fn($s,$d,$a)=>$paypal->rent($s,$a['id']));
+        $route('POST','/charges/{id}/paypal-sandbox',fn($s,$d,$a)=>$paypal->startRent($s,$a['id']));
+        $route('POST','/charges/{id}/paypal-sandbox/reconcile',fn($s,$d,$a)=>$paypal->reconcileRent($s,$a['id']));
+        $route('GET','/settings/paypal-sandbox',fn($s)=>$paypal->subscription($s));
+        $route('POST','/settings/paypal-sandbox',fn($s,$d)=>$paypal->startSubscription($s,$d));
+        $app->post('/api/v1/webhooks/paypal-sandbox/{app:[a-z0-9_-]{1,50}}',function(Request $r,Response $res,array $a)use($paypal,$body,$json){
+            $headers=[];
+            foreach(['auth_algo','cert_url','transmission_id','transmission_sig','transmission_time'] as $name){
+                $headers[$name]=$r->getHeaderLine('PayPal-'.str_replace('_','-',$name));
+            }
+            return $json($res,$paypal->webhook($a['app'],$body($r),$headers,(string)$r->getBody()));
         });
         $app->post('/api/v1/webhooks/stripe',fn(Request $r,Response $res)=>$json($res,$payments->webhook((string)$r->getBody(),$r->getHeaderLine('Stripe-Signature'))));
         $app->post('/api/v1/webhooks/billing',fn(Request $r,Response $res)=>$json($res,$payments->webhook((string)$r->getBody(),$r->getHeaderLine('Stripe-Signature'),true)));

@@ -34,6 +34,7 @@ final class Finance {
         $s->requireRoles('ADMIN','FINANCE');$s->charge($id);$amount=Validate::integer($d,'amount_cents',1);$key=Validate::text($d,'idempotency_key',8,150);$reason=Validate::text($d,'reason',3,1000);$kind=Validate::choice($d,'kind',['PAYMENT','ADJUSTMENT']);
         return $this->db->transaction(function()use($s,$id,$amount,$key,$reason,$kind){$key=$s->companyId.':'.$key;$existing=$this->db->one('SELECT * FROM payments WHERE idempotency_key=?',[$key]);if($existing){if($existing['charge_id']!==$id||$existing['amount_cents']!==$amount||$existing['kind']!==$kind)throw new HttpError(409,'Chave de operação já utilizada.');return $existing;}
             $b=$this->balance($id);if(!$b['confirmed']||$amount>$b['balance_cents'])throw new HttpError(422,'Valor superior ao saldo ou cobrança por confirmar.');
+            if(PayPalSandbox::rentInProgress($this->db,$id))throw new HttpError(409,'Já existe um pagamento PayPal Sandbox em curso.');
             if($this->db->one("SELECT id FROM checkouts WHERE charge_id=? AND status IN('CREATING','OPEN','PROCESSING')",[$id]))throw new HttpError(409,'Existe um pagamento online em curso. Aguarde a confirmação ou expiração.');
             $p=$this->db->insert('payments',['company_id'=>$s->companyId,'charge_id'=>$id,'amount_cents'=>$amount,'kind'=>$kind,'method'=>'MANUAL','reason'=>$reason,'idempotency_key'=>$key]);$s->audit('payment.manual',$p['id']);return $p;});
     }

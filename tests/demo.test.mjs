@@ -54,7 +54,10 @@ test('packaged public demo isolates roles, integrations and database generations
   const healthData = await health.json();
   assert.equal(healthData.storage, mysql ? 'mysql' : 'sqlite');
   t.diagnostic(`${healthData.storage} HTTP ${healthData[healthData.storage + '_version']}`);
-  assert.equal((await (await req('/config')).json()).public_demo, true);
+  const config=await (await req('/config')).json();
+  assert.equal(config.public_demo, true);
+  assert.equal(config.bank_transfers, false);
+  assert.equal(config.paypal_sandbox, false);
   assert.equal((await req('/properties')).status, 401);
   const commercialUrl = `http://127.0.0.1:${port}/en/rental-management-software`;
   assert.doesNotMatch(await (await fetch(commercialUrl)).text(), /name="units"/);
@@ -84,6 +87,7 @@ test('packaged public demo isolates roles, integrations and database generations
 
   const manager = await login('gestor@demo.homealone.pt', 'ADMIN');
   const resident = await login('morador@demo.homealone.pt', 'RESIDENT');
+  assert.equal((await req('/settings/bank-transfer', { session: manager })).status, 404);
   const owner = await login('proprietario@demo.homealone.pt', 'OWNER');
   const tech = await login('tecnico@demo.homealone.pt', 'TECHNICIAN');
   const porto = await login('gestor@demo.porto.pt', 'ADMIN', 'company-porto');

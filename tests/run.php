@@ -144,4 +144,5 @@ test('Company administrator membership audit and queued invite roll back togethe
     try {try{$ad->createCompany($platformActor,[...$companyInput,'slug'=>'rollback-company','admin_email'=>'rollback@example.test']);throw new RuntimeException('Expected failure');}catch(PDOException){} }finally{$db->pdo->exec('DROP TRIGGER fail_platform_audit');}
     eq($db->one('SELECT (SELECT COUNT(*) FROM companies) c,(SELECT COUNT(*) FROM users) u,(SELECT COUNT(*) FROM jobs) j,(SELECT COUNT(*) FROM memberships) m,(SELECT COUNT(*) FROM reset_tokens) t'),$counts);
 });
+require __DIR__.'/paypal-sandbox-cases.php';
 echo "\n$passed passed; $failed failed.\n";exit($failed?1:0);

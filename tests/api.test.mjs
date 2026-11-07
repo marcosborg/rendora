@@ -1,13 +1,21 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 const root=process.cwd();const db=path.join(root,'.local','http-tests',`test-${Date.now()}.sqlite`);const port=18082;const base=`http://127.0.0.1:${port}`;let server,admin,resident,porto,tech,createdProperty,contract,charge,doc;let stderr='';
 async function req(url,options={},session=admin,company='company-lisbon'){const response=await fetch(base+'/api/v1'+url,{...options,headers:{...(options.body instanceof FormData?{}:{'Content-Type':'application/json'}),...(session?{'Cookie':session.cookie,'X-CSRF-Token':session.csrf,'X-Company-Id':company}:{}),...options.headers}});const content=await response.text();let data;try{data=JSON.parse(content);}catch{data=content;}return {response,data,status:response.status};}
 const post=(url,data,session=admin,company)=>req(url,{method:'POST',body:JSON.stringify(data)},session,company);
 async function login(email){const {response,data,status}=await post('/auth/demo',{email},null);assert.equal(status,200,JSON.stringify(data));return {cookie:response.headers.get('set-cookie').split(';')[0],csrf:data.csrf};}
-before(async()=>{await mkdir(path.dirname(db),{recursive:true});const env={...process.env,DB_PATH:db,APP_ENV:'test',DEMO_MODE:'true',COOKIE_SECURE:'false',APP_URL:base,STRIPE_SECRET_KEY:'',RESEND_API_KEY:''};execFileSync('php',['bin/console.php','migrate'],{cwd:root,env});execFileSync('php',['bin/console.php','seed'],{cwd:root,env});server=spawn('php',['-S',`127.0.0.1:${port}`,'-t','public','public/router.php'],{cwd:root,env,stdio:['ignore','ignore','pipe']});server.stderr.on('data',chunk=>{stderr+=chunk.toString();});for(let i=0;i<50;i++){try{if((await fetch(base+'/api/v1/health')).ok)break;}catch{}await new Promise(r=>setTimeout(r,50));}admin=await login('gestor@demo.homealone.pt');resident=await login('morador@demo.homealone.pt');porto=await login('gestor@demo.porto.pt');tech=await login('tecnico@demo.homealone.pt');});
+before(async()=>{await mkdir(path.dirname(db),{recursive:true});const env={...process.env,DB_PATH:db,APP_ENV:'test',DEMO_MODE:'true',COOKIE_SECURE:'false',APP_URL:base,STRIPE_SECRET_KEY:'',RESEND_API_KEY:'',BANK_TRANSFERS_ENABLED:'true',ALLOW_LIVE_PAYMENTS:'false',SUBSCRIPTION_BANK_BENEFICIARY:'Netlook Teste',SUBSCRIPTION_BANK_IBAN:'PT50000000000000000000001',BANK_PLAN_ESSENTIAL_ID:'plan-demo',BANK_PLAN_ESSENTIAL_MONTH_CENTS:'1900'};const mysql=process.env.RENDORA_TRIAL_MYSQL_DSN;
+if(mysql){
+  assert.match(mysql,/^mysql:unix_socket=[^;]+;dbname=rendora_trial(?:;charset=utf8mb4)?$/);
+  Object.assign(env,{DB_MYSQL_DSN:mysql,DB_MYSQL_USER:process.env.RENDORA_TRIAL_MYSQL_USER||'',DB_MYSQL_PASSWORD:process.env.RENDORA_TRIAL_MYSQL_PASSWORD||''});
+}else{
+  env.DB_MYSQL_DSN='';
+  execFileSync('php',['bin/console.php','migrate'],{cwd:root,env});
+  execFileSync('php',['bin/console.php','seed'],{cwd:root,env});
+}server=spawn('php',['-S',`127.0.0.1:${port}`,'-t','public','public/router.php'],{cwd:root,env,stdio:['ignore','ignore','pipe']});server.stderr.on('data',chunk=>{stderr+=chunk.toString();});for(let i=0;i<50;i++){try{if((await fetch(base+'/api/v1/health')).ok)break;}catch{}await new Promise(r=>setTimeout(r,50));}admin=await login('gestor@demo.homealone.pt');resident=await login('morador@demo.homealone.pt');porto=await login('gestor@demo.porto.pt');tech=await login('tecnico@demo.homealone.pt');});
 after(()=>{server?.kill();});
 test('public server renders catalog HTML for SEO',async()=>{const response=await fetch(base+'/alojamentos/casa-lisboa');assert.equal(response.status,200);const html=await response.text();assert.match(html,/<title>Casa Lisboa/);assert.match(html,/Alcântara/);assert.doesNotMatch(html,/stripe_account_id/);});
 test('bilingual public pages have reciprocal URLs and login stays out of the index', async () => {
@@ -105,6 +113,74 @@ test('legal drafts have localised links and stay out of the index', async () => 
   }
   const sitemap = await (await fetch(base + '/sitemap.xml')).text();
   for (const pair of pairs) for (const route of pair) assert.ok(!sitemap.includes(`${base}${route}</loc>`));
+});
+test('bank transfers keep rent and subscription proofs private and only credit verified receipts',async t=>{
+  const iban='PT50000000000000000000001';
+  const owner=await login('proprietario@demo.homealone.pt');
+  const future=new Date();
+  future.setUTCDate(1);
+  future.setUTCMonth(future.getUTCMonth()+2);
+  const period=future.toISOString().slice(0,7);
+  assert.equal((await post('/charges/generate',{period})).status,200);
+  const charges=(await req(`/charges?period=${period}`,{},resident)).data;
+  const charge=charges.find(c=>c.confirmed&&c.balance_cents>0);
+  assert.ok(charge);
+  const contract=charge.contract_id;
+  const members=(await req('/members')).data;
+  const ownerId=members.find(m=>m.email==='proprietario@demo.homealone.pt').id;
+  const account={recipient_id:ownerId,beneficiary:'Beneficiário fictício',iban};
+  const accountPath=`/contracts/${contract}/bank-account`;
+  assert.equal((await req(accountPath,{},resident)).status,403);
+  assert.equal((await req(accountPath,{method:'PUT',body:JSON.stringify({...account,iban:iban.slice(0,-1)+'2'})})).status,422);
+  assert.equal((await req(accountPath,{method:'PUT',body:JSON.stringify(account)})).status,200);
+  assert.equal((await req(accountPath,{},porto,'company-porto')).status,404);
+  const rentPath=`/charges/${charge.id}/bank-transfer`;
+  const rent=(await req(rentPath,{},resident)).data;
+  assert.equal(rent.instructions.beneficiary,account.beneficiary);
+  assert.equal(rent.instructions.iban,iban);
+  const upload=async(path,fields,session,content='%PDF-1.4\n%%EOF')=>{
+    const form=new FormData();
+    Object.entries(fields).forEach(([key,value])=>form.set(key,value));
+    form.set('file',new Blob([content],{type:'application/pdf'}),'test.pdf');
+    return req(path,{method:'POST',body:form},session);
+  };
+  const remember=id=>t.after(()=>rm(path.join(root,'storage','bank-proofs',id),{force:true}));
+  assert.equal((await upload(rentPath,{version:'0'.repeat(64)},resident)).status,409);
+  assert.equal((await upload(rentPath,{version:rent.instructions.version},resident,'not a PDF')).status,422);
+  const submitted=await upload(rentPath,{version:rent.instructions.version},resident);
+  assert.equal(submitted.status,200,JSON.stringify(submitted.data));
+  const proof=submitted.data;
+  remember(proof.id);
+  assert.equal(proof.status,'PENDING');
+  assert.equal((await upload(rentPath,{version:rent.instructions.version},resident)).data.id,proof.id);
+  assert.equal((await req(`/charges/${charge.id}`,{},resident)).data.balance_cents,charge.balance_cents);
+  const proofPath=`/bank-proofs/${proof.id}`;
+  assert.equal((await req(proofPath,{},admin)).status,403);
+  assert.equal((await req(proofPath,{},porto,'company-porto')).status,404);
+  assert.equal((await req(proofPath,{},owner)).response.headers.get('content-type'),'application/pdf');
+  const review={status:'APPROVED',bank_reference:'FIXTURE-RENT-1'};
+  assert.equal((await post(proofPath+'/review',review,resident)).status,403);
+  assert.equal((await post(proofPath+'/review',review,owner)).status,200);
+  assert.equal((await post(proofPath+'/review',review,owner)).status,200);
+  const settled=(await req(`/charges/${charge.id}`,{},resident)).data;
+  assert.equal(settled.balance_cents,0);
+  assert.equal(settled.movements.filter(m=>m.external_id===`bank:${proof.id}`).length,1);
+
+  const subPath='/settings/bank-transfer';
+  assert.equal((await req(subPath,{},resident)).status,403);
+  const offer=(await req(subPath)).data.offers[0];
+  assert.equal(offer.beneficiary,'Netlook Teste');
+  assert.equal(offer.amount_cents,1900);
+  const sub=await upload(subPath,{plan_id:offer.plan_id,months:'1',version:offer.version},admin,'%PDF-1.4\n% Subscription\n%%EOF');
+  assert.equal(sub.status,200,JSON.stringify(sub.data));
+  remember(sub.data.id);
+  const subReview=`/platform/bank-proofs/${sub.data.id}/review`;
+  assert.equal((await post(subReview,{status:'APPROVED',bank_reference:'FIXTURE-SUB-1'},porto)).status,403);
+  assert.equal((await post(subReview,review)).status,409);
+  const approved=await post(subReview,{status:'APPROVED',bank_reference:'FIXTURE-SUB-1'});
+  assert.equal(approved.status,200,JSON.stringify(approved.data));
+  assert.match(approved.data.paid_until,/^\d{4}-\d{2}-\d{2}$/);
+  assert.equal((await req('/settings')).data.subscription_status,'bank_transfer');
 });
 test('anonymous access and cross-company access fail',async()=>{assert.equal((await req('/properties',{},null)).status,401);assert.equal((await req('/properties',{},resident,'company-porto')).status,403);const rows=await req('/properties',{},porto,'company-porto');assert.equal(rows.data.length,1);});
 test('real JSON property creation, edit and reload persist',async()=>{let r=await post('/properties',{name:'HTTP test apartment',type:'APARTMENT',address:'Rua de Teste, 10',city:'Lisboa',rent_cents:110000,area:70,bedrooms:2,description:'Apartamento para testar a persistência.',parent_id:null,owner_id:'u-owner',published:false,photos:[],amenities:['Mobilado']});assert.equal(r.status,200,JSON.stringify(r.data));createdProperty=r.data.id;r=await req(`/properties/${createdProperty}`,{method:'PATCH',body:JSON.stringify({...r.data,name:'HTTP test updated',photos:[],amenities:['Mobilado']})});assert.equal(r.status,200,JSON.stringify(r.data));const list=(await req('/properties')).data;assert.equal(list.find(p=>p.id===createdProperty).name,'HTTP test updated');});

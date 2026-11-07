@@ -25,16 +25,18 @@ const nav = [
 ];
 export default function App() {
   const [me, setMe] = useState<Row | null>(null); const [boot, setBoot] = useState(true); const [publicDemo, setPublicDemo] = useState(false); const [demo, setDemo] = useState(false); const [companyId, setCompanyId] = useState(() => sessionStorage.getItem('rendora-company') || '');
+  const [paypalSandbox, setPaypalSandbox] = useState(false);
+  const [bankTransfers, setBankTransfers] = useState(false);
   const [page, setPage] = useState(new URLSearchParams(location.search).get('page') || 'dashboard'); const [tick, setTick] = useState(0); const [modal, setModal] = useState<Modal | null>(null); const [notice, setNotice] = useState<{message:string; error:boolean}|null>(null); const [search, setSearch] = useState(''); const [period, setPeriod] = useState(new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Lisbon' }).slice(0,7)); const [mobile, setMobile] = useState(false);
   const catalogMatch = location.pathname.match(/^\/(?:alojamentos|en\/properties)\/([^/]+)\/?$/);
   const publicSlug = catalogMatch ? decodeURIComponent(catalogMatch[1]) : '';
   async function load() { try { const value = await api('/auth/me'); setMe(value); setCompanyId(prev => value.companies.some((c:Row) => c.id === prev) ? prev : value.companies[0]?.id || ''); } catch { setMe(null); } finally { setBoot(false); } }
-  useEffect(() => { api('/config').then(c => { setDemo(c.demo); setPublicDemo(c.public_demo); }).catch(() => {}); if (!publicSlug) load(); else setBoot(false); }, []);
+  useEffect(() => { api('/config').then(c => { setDemo(c.demo); setPublicDemo(c.public_demo); setBankTransfers(c.bank_transfers === true); setPaypalSandbox(c.paypal_sandbox === true); }).catch(() => {}); if (!publicSlug) load(); else setBoot(false); }, []);
   useEffect(() => { if (!notice) return; const id = setTimeout(() => setNotice(null), 6000); return () => clearTimeout(id); }, [notice]);
   useEffect(() => { const back = () => setPage(new URLSearchParams(location.search).get('page') || 'dashboard'); addEventListener('popstate', back); return () => removeEventListener('popstate', back); }, []);
   function go(value: string) { setPage(value); setSearch(''); setMobile(false); history.pushState({}, '', `${homePath}?page=${value}`); }
   const toast = (message: string, error = false) => setNotice({ message, error }); const company = me?.companies.find((c:Row) => c.id === companyId) || {}; const role = company.role || ''; sessionContext(companyId, me?.csrf || '');
-  const context = { user: me?.user || {}, company, role, tick, refresh: () => setTick(v => v + 1), toast, modal: setModal, go, period, search };
+  const context = { bankTransfers, paypalSandbox, user: me?.user || {}, company, role, tick, refresh: () => setTick(v => v + 1), toast, modal: setModal, go, period, search };
   if (publicSlug) return <Context.Provider value={context}><PublicSite slug={publicSlug}/>{modal && <ModalView value={modal} close={() => setModal(null)}/>}<Toast notice={notice}/></Context.Provider>;
   if (boot) return <div className="boot"><Brand/><Loading/></div>;
   if (!me) return <Login publicDemo={publicDemo} demo={demo} onLogin={load}/>;

@@ -1,3 +1,4 @@
+import { PlatformBankTransfers } from './BankTransfers';
 import { catalogPath, tr } from '../locale';
 import { useState } from 'react';
 import { Plus, Mail, Building2, ArrowUpRight } from 'lucide-react';
@@ -48,6 +49,7 @@ export function PlatformPage() {
     <Panel title={tr("Empresas", "Companies")} subtitle={tr("Os dados operacionais de cada empresa permanecem separados.", "Each company's operational data remains separate.")}>
       {data.companies.length ? <div className="table-scroll"><table><thead><tr><th>{tr("Empresa", "Company")}</th><th>{tr("Site", "Website")}</th><th>{tr("Administradores", "Administrators")}</th><th>{tr("Subscrição", "Subscription")}</th></tr></thead><tbody>{data.companies.map((c: Row) => <tr key={c.id}><td><strong>{c.name}</strong></td><td><a href={catalogPath(c.slug)}>{c.slug}</a></td><td>{c.administrators.length ? c.administrators.map((a: Row) => <div className="platform-admin" key={a.id}><strong>{a.name}</strong><small>{a.email}</small><span className={`badge ${a.invitation_pending ? 'badge-pending' : a.active ? 'badge-active' : 'badge-closed'}`}>{a.invitation_pending ? tr("Convite pendente", "Invitation pending") : a.active ? tr("Ativo", "Active") : tr("Suspenso", "Suspended")}</span>{!!a.invitation_pending && <button className="text-button" disabled={!!sending} onClick={() => resend(c.id,a.id)}>{sending === `${c.id}:${a.id}` ? 'A preparar…' : tr("Reenviar convite", "Resend invitation")}</button>}</div>) : <span className="muted">{tr("Sem administrador atribuído", "No administrator assigned")}</span>}</td><td>{labels[c.subscription_status] || c.subscription_status}</td></tr>)}</tbody></table></div> : <Empty title={tr("Ainda não existem empresas", "No companies yet")} text={tr("Usa Nova empresa para criar a primeira área de gestão.", "Use New company to create the first workspace.")}/>}
     </Panel>
+    <PlatformBankTransfers/>
     <Panel title={tr("Planos configurados", "Configured plans")}><div className="settings-description">{data.plans.map((p: Row) => <div className="plan-row" key={p.id}><div><strong>{p.name}</strong><small>{p.property_limit} {tr("imóveis ·", "properties ·")} {p.member_limit} {tr("utilizadores","users")}</small></div><span>{p.stripe_price_id ? tr("Preço associado", "Price linked") : tr("Sem cobrança configurada", "Billing not configured")}</span></div>)}</div></Panel>
   </>;
 }

@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
-const roots=['src','database/migrations','database/seed.php','bin','vendor','deploy','docs','composer.json','composer.lock','.env.example','.htaccess','public/app.html','public/openapi.json','public/docs.html','public/.htaccess','public/brand'];
+const roots=['src','database/migrations','database/mysql','database/seed.php','bin','vendor','deploy','docs','composer.json','composer.lock','.env.example','.htaccess','public/app.html','public/openapi.json','public/docs.html','public/.htaccess','public/brand'];
 const html=await fs.readFile('public/app.html','utf8');
 roots.push(...[...html.matchAll(/(?:src|href)="(\/assets\/[^\"]+)"/g)].map(m=>m[1].slice(1)).map(p=>'public/'+p));
 const files={};

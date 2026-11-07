@@ -4,7 +4,7 @@ import { X, LoaderCircle, ArrowUpRight, Inbox, Check, AlertCircle, Upload, Downl
 import { api, download, labels, type Row } from './api';
 export type Field = { name: string; label: string; type?: string; required?: boolean; options?: { value: string; label: string }[]; value?: any; placeholder?: string; wide?: boolean; min?: number; max?: number };
 export type Modal = { title: string; subtitle?: string; fields?: Field[]; submit?: string; onSubmit?: (data: Row) => Promise<unknown>; content?: ReactNode };
-type ContextType = { user: Row; company: Row; role: string; tick: number; refresh: () => void; toast: (message: string, error?: boolean) => void; modal: (value: Modal | null) => void; go: (page: string) => void; period: string; search: string; };
+type ContextType = { bankTransfers: boolean; paypalSandbox: boolean; user: Row; company: Row; role: string; tick: number; refresh: () => void; toast: (message: string, error?: boolean) => void; modal: (value: Modal | null) => void; go: (page: string) => void; period: string; search: string; };
 export const Context = createContext<ContextType>(null!);
 export const useApp = () => useContext(Context);
 export const options = (items: Row[], key = 'name') => items.map(x => ({ value: x.id, label: x[key] }));
