@@ -7,7 +7,7 @@ Contrato de integração: [`public/openapi.json`](../public/openapi.json). Leitu
 A implementação foi adaptada ao alojamento partilhado: PHP 8.2 + SQLite, sem NestJS, PostgreSQL, Redis ou Supabase. As contas são locais. Palavras-passe usam `password_hash`; os tokens de sessão são aleatórios, armazenados apenas como SHA-256 na base de dados. Não são JWT.
 
 - Browser: `POST /api/v1/auth/login` com `email` e `password`. O servidor emite cookie `HttpOnly; SameSite=Strict; Secure` em produção. Guardar `csrf` em memória e enviar `X-CSRF-Token` nas escritas.
-- App móvel: o mesmo pedido com `client: "mobile"` devolve `token`. Guardar no Keychain/Keystore e enviar `Authorization: Bearer <token>`. Validade de 24 horas; ao receber 401, pedir nova autenticação. Nunca guardar a palavra-passe.
+- App de inquilinos: envia `client: "resident-app"` em `POST /api/v1/auth/login`. Recebe um token Bearer de 24 horas, limitado a empresas em que a conta tenha acesso activo como inquilino. Guarda-o no Keychain/Keystore e pede novo login ao receber 401. A palavra-passe não é guardada. Em modo de demonstração, `POST /api/v1/auth/demo` aceita a mesma opção para a conta fictícia de inquilino. A opção histórica `client: "mobile"` mantém o comportamento anterior.
 - `GET /api/v1/auth/me` devolve utilizador, CSRF e empresas acessíveis. Enviar `X-Company-Id` nas rotas de negócio.
 - `POST /api/v1/auth/logout` revoga a sessão. A alteração de palavra-passe revoga todas as sessões.
 - Convites de contas sem email comprovado ficam pendentes; só se ativam ao abrir a ligação enviada por email e definir a palavra-passe. Recuperar a palavra-passe não reativa acessos suspensos.

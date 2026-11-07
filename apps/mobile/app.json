@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Rendora",
+    "slug": "rendora",
+    "version": "0.1.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "platforms": ["ios", "android"],
+    "ios": {
+      "bundleIdentifier": "pt.rendora.mobile",
+      "supportsTablet": true,
+      "config": { "usesNonExemptEncryption": false }
+    },
+    "android": {
+      "package": "pt.rendora.mobile"
+    },
+    "plugins": ["expo-secure-store"]
+  }
+}

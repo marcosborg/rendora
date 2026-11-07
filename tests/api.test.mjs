@@ -230,4 +230,32 @@ test('platform company creation requires global admin and valid CSRF',async()=>{
  assert.equal((await post(`/platform/companies/${c.id}/administrators/${c.administrators[0].id}/invite`,{},porto)).status,403);
  assert.equal((await post(`/platform/companies/company-lisbon/administrators/${c.administrators[0].id}/invite`,{})).status,404);
 });
+test('tenant app sign-in uses a bearer session and excludes other workspaces',async()=>{
+  const mobile=(token, company='company-lisbon')=>({
+    Authorization:`Bearer ${token}`,'X-Company-Id':company,
+  });
+  const tenant=await post('/auth/demo',{email:'morador@demo.homealone.pt',client:'resident-app'},null);
+  assert.equal(tenant.status,200);
+  assert.equal(tenant.response.headers.get('set-cookie'),null);
+  assert.match(tenant.data.token,/^resident_[a-f0-9]{64}$/);
+  assert.equal((await post('/auth/demo',{email:'gestor@demo.homealone.pt',client:'resident-app'},null)).status,403);
+
+  const password='tenant-test-fixture-password';
+  const php='require "src/bootstrap.php"; $d=database(); $d->run("UPDATE users SET password_hash=?,platform_admin=1 WHERE id=?", [password_hash($argv[1], PASSWORD_DEFAULT), "u-resident"]); $d->insert("memberships",["company_id"=>"company-porto","user_id"=>"u-resident","role"=>"MANAGER"]);';
+  execFileSync('php',['-r',php,password],{cwd:root,env:{...process.env,DB_PATH:db,DB_MYSQL_DSN:''}});
+  const loginResult=await post('/auth/login',{email:'morador@demo.homealone.pt',password,client:'resident-app'},null);
+  assert.equal(loginResult.status,200);
+  assert.equal(loginResult.response.headers.get('set-cookie'),null);
+  const token=loginResult.data.token;
+  const headers=mobile(token);
+  const identity=await req('/auth/me',{headers},null);
+  assert.deepEqual(identity.data.companies.map(c=>[c.id,c.role]),[['company-lisbon','RESIDENT']]);
+  assert.equal(identity.data.user.platform_admin,false);
+  assert.equal((await req('/platform',{headers},null)).status,403);
+  assert.equal((await req('/properties',{headers:mobile(token,'company-porto')},null)).status,403);
+  assert.ok((await req('/contracts',{headers},null)).data.every(c=>c.id==='ct-ines'));
+  assert.equal((await req('/contracts/ct-miguel',{headers},null)).status,404);
+  assert.equal((await req('/auth/logout',{method:'POST',headers},null)).status,200);
+  assert.equal((await req('/auth/me',{headers},null)).status,401);
+});
 test('no unexpected PHP warnings or fatal errors during requests',()=>{assert.doesNotMatch(stderr,/PHP (Warning|Fatal|Parse|Deprecated)/);assert.doesNotMatch(stderr,/HomeAlone error/);});

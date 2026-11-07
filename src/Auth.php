@@ -25,12 +25,15 @@ final class Auth {
         $user=$this->db->one('SELECT * FROM users WHERE email=?',[$email]);
         $password=Validate::text($data,'password',1,1024);
         if(!$user||!password_verify($password,$user['password_hash']))throw new HttpError(401,'Email ou palavra-passe incorretos.');
-        return $this->session($user);
+        return $this->session($user,($data['client']??'')==='resident-app');
     }
-    public function session(array $user): array {
-        $token=bin2hex(random_bytes(32));$csrf=bin2hex(random_bytes(24));
+    public function session(array $user,bool $residentApp=false): array {
+        if($residentApp&&!$this->db->one("SELECT user_id FROM memberships WHERE user_id=? AND role='RESIDENT' AND active=1",[$user['id']])){
+            throw new HttpError(403,'Esta app destina-se a inquilinos com acesso ativo.');
+        }
+        $token=($residentApp?'resident_':'').bin2hex(random_bytes(32));$csrf=bin2hex(random_bytes(24));
         $this->db->insert('sessions',['user_id'=>$user['id'],'token_hash'=>hash('sha256',$token),'csrf'=>$csrf,'expires_at'=>gmdate('Y-m-d H:i:s',time()+86400)]);
-        return ['token'=>$token,'csrf'=>$csrf,'user'=>['id'=>$user['id'],'name'=>$user['name'],'email'=>$user['email'],'platform_admin'=>(bool)($user['platform_admin']??false)],'expires_in'=>86400];
+        return ['token'=>$token,'csrf'=>$csrf,'user'=>['id'=>$user['id'],'name'=>$user['name'],'email'=>$user['email'],'platform_admin'=>!$residentApp&&(bool)($user['platform_admin']??false)],'expires_in'=>86400];
     }
     public function user(Request $request): array {
         $bearer=$request->getHeaderLine('Authorization');$token=str_starts_with($bearer,'Bearer ')?substr($bearer,7):($request->getCookieParams()[self::cookieName()]??'');
@@ -38,12 +41,14 @@ final class Auth {
         $row=$this->db->one('SELECT u.id,u.name,u.email,u.platform_admin,s.csrf,s.id session_id FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>CURRENT_TIMESTAMP',[hash('sha256',$token)]);
         if(!$row)throw new HttpError(401,'Sessão expirada. Inicie sessão novamente.');
         if(!str_starts_with($bearer,'Bearer ')&&!in_array($request->getMethod(),['GET','HEAD','OPTIONS'])&&!hash_equals($row['csrf'],$request->getHeaderLine('X-CSRF-Token')))throw new HttpError(403,'Token de segurança inválido. Atualize a página.');
+        $row['resident_app']=str_starts_with($token,'resident_');
+        if($row['resident_app'])$row['platform_admin']=0;
         return $row;
     }
     public function scope(Request $request): Scope {
         $user=$this->user($request);$company=$request->getHeaderLine('X-Company-Id');
         $membership=$this->db->one('SELECT * FROM memberships WHERE company_id=? AND user_id=? AND active=1',[$company,$user['id']]);
-        if(!$membership)throw new HttpError(403,'Sem acesso a esta empresa.');
+        if(!$membership||($user['resident_app']&&$membership['role']!=='RESIDENT'))throw new HttpError(403,'Sem acesso a esta empresa.');
         return new Scope($this->db,$company,$user,$membership['role']);
     }
     public function register(array $d,string $ip): array {
