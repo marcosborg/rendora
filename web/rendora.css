@@ -170,3 +170,11 @@ button:focus-visible,a:focus-visible { outline:3px solid var(--focus); outline-o
 .login-legal .login-secure { justify-content:center; }
 .login-legal .legal-links { justify-content:center; margin-top:.6rem; }
 .public-footer > .legal-links { grid-column:1 / -1; }
+
+.getting-started { margin-bottom: 20px; padding: 18px 22px; }
+.getting-started summary { cursor: pointer; font-size: 1.08rem; font-weight: 700; }
+.getting-started p { margin: 10px 0 0; color: var(--text-muted); }
+.getting-started ol { margin: 12px 0 0; padding-inline-start: 24px; }
+.getting-started li + li { margin-top: 10px; }
+.getting-started li a { display: inline-flex; align-items: center; gap: 5px; color: var(--brand); font-weight: 650; }
+.getting-started li span { display: block; color: var(--text-muted); }
