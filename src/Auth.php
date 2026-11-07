@@ -8,15 +8,15 @@ final class Auth {
     public function throttle(string $key,int $limit=10,int $seconds=900): void {
         $key=hash('sha256',$key);$now=time();
         $this->db->transaction(function()use($key,$now,$limit,$seconds){
-            $row=$this->db->one('SELECT * FROM rate_limits WHERE key=?',[$key]);
+            $row=$this->db->one('SELECT * FROM rate_limits WHERE `key`=?',[$key]);
             if($row&&$row['expires_at']>$now&&$row['attempts']>=$limit)throw new HttpError(429,'Demasiadas tentativas. Tente mais tarde.');
             $active=$row && $row['expires_at']>$now;
             $attempts=$active ? $row['attempts']+1 : 1;
             $expiresAt=$active ? $row['expires_at'] : $now+$seconds;
             if($row){
-                $this->db->run('UPDATE rate_limits SET attempts=?,expires_at=? WHERE key=?',[$attempts,$expiresAt,$key]);
+                $this->db->run('UPDATE rate_limits SET attempts=?,expires_at=? WHERE `key`=?',[$attempts,$expiresAt,$key]);
             }else{
-                $this->db->run('INSERT INTO rate_limits(key,attempts,expires_at) VALUES(?,?,?)',[$key,$attempts,$expiresAt]);
+                $this->db->run('INSERT INTO rate_limits(`key`,attempts,expires_at) VALUES(?,?,?)',[$key,$attempts,$expiresAt]);
             }
         });
     }

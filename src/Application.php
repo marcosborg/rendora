@@ -10,7 +10,7 @@ final class Application {
         $json=static function(Response $r,mixed $data,int $status=200):Response{$r->getBody()->write(json_encode($data,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR));return $r->withStatus($status)->withHeader('Content-Type','application/json; charset=utf-8')->withHeader('Cache-Control','no-store');};
         $body=static function(Request $r):array{$data=$r->getParsedBody();if(!is_array($data))return [];return $data;};
         $route=static function(string $method,string $path,callable $handler)use($app,$auth,$json,$body){$app->map([$method],'/api/v1'.$path,function(Request $r,Response $response,array $args)use($handler,$auth,$json,$body){$scope=$auth->scope($r);$result=$handler($scope,$body($r),$args,$r);return $result instanceof Response?$result:$json($response,$result??['ok'=>true]);});};
-        $app->get('/api/v1/health',fn(Request $r,Response $res)=>$json($res,['status'=>$db->one('SELECT 1 ok')['ok']?'ok':'error','storage'=>'sqlite',...(defined('RENDORA_PUBLIC_DEMO')?['sqlite_version'=>$db->one('SELECT sqlite_version() version')['version']]:[])]));
+        $app->get('/api/v1/health',fn(Request $r,Response $res)=>$json($res,['status'=>$db->one('SELECT 1 ok')['ok']?'ok':'error','storage'=>$db->engine(),...(defined('RENDORA_PUBLIC_DEMO')?[$db->engine().'_version'=>$db->one($db->engine()==='mysql'?'SELECT VERSION() version':'SELECT sqlite_version() version')['version']]:[])]));
         $app->get('/api/v1/config',fn(Request $r,Response $res)=>$json($res,['demo'=>env('DEMO_MODE')==='true'&&env('APP_ENV')!=='production','name'=>'Rendora','public_demo'=>defined('RENDORA_PUBLIC_DEMO')]));
         $loginResponse=static function(Response $response,array $session,bool $mobile)use($json):Response{$cookie=Auth::cookieName().'='.$session['token'].'; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400'.(env('COOKIE_SECURE','true')==='true'?'; Secure':'');if(!$mobile)unset($session['token']);return $json($response,$session)->withAddedHeader('Set-Cookie',$cookie);};
         $app->post('/api/v1/auth/login',fn(Request $r,Response $res)=>$loginResponse($res,$auth->login($body($r),$r->getServerParams()['REMOTE_ADDR']??'unknown'),($body($r)['client']??'')==='mobile'));
@@ -85,7 +85,16 @@ final class Application {
         $route('GET','/documents',fn($s,$d,$a,$r)=>$docs->list($s,$r->getQueryParams()['entity_type']??'',$r->getQueryParams()['entity_id']??''));
         $route('POST','/documents',function($s,$d,$a,$r)use($docs){$file=$r->getUploadedFiles()['file']??null;if(!$file)throw new HttpError(422,'Selecione um ficheiro.');return $docs->upload($s,Validate::text($d,'entity_type'),Validate::text($d,'entity_id'),$file);});
         $route('GET','/documents/{id}/download',function($s,$d,$a)use($docs){$doc=$docs->download($s,$a['id']);$res=new \Slim\Psr7\Response();$res->getBody()->write(file_get_contents($doc['path']));return $res->withHeader('Content-Type',$doc['mime_type'])->withHeader('Cache-Control','no-store')->withHeader('Content-Disposition',"attachment; filename*=UTF-8''".rawurlencode($doc['name']));});
-        $route('POST','/devices',function($s,$d)use($db){$token=Validate::text($d,'token',10,2000);$platform=Validate::choice($d,'platform',['ios','android','web']);$db->run('INSERT INTO devices(id,company_id,user_id,token,platform) VALUES(?,?,?,?,?) ON CONFLICT(company_id,user_id,token) DO UPDATE SET platform=excluded.platform',[Database::id(),$s->companyId,$s->user['id'],$token,$platform]);return ['registered'=>true,'push_enabled'=>false];});
+        $route('POST','/devices',function($s,$d)use($db){
+            $token=Validate::text($d,'token',10,2000);
+            $platform=Validate::choice($d,'platform',['ios','android','web']);
+            $db->transaction(function()use($db,$s,$token,$platform){
+                $device=$db->one('SELECT id FROM devices WHERE company_id=? AND user_id=? AND token=?',[$s->companyId,$s->user['id'],$token]);
+                if($device)$db->run('UPDATE devices SET platform=? WHERE id=?',[$platform,$device['id']]);
+                else $db->insert('devices',['company_id'=>$s->companyId,'user_id'=>$s->user['id'],'token'=>$token,'platform'=>$platform]);
+            });
+            return ['registered'=>true,'push_enabled'=>false];
+        });
         $app->post('/api/v1/webhooks/stripe',fn(Request $r,Response $res)=>$json($res,$payments->webhook((string)$r->getBody(),$r->getHeaderLine('Stripe-Signature'))));
         $app->post('/api/v1/webhooks/billing',fn(Request $r,Response $res)=>$json($res,$payments->webhook((string)$r->getBody(),$r->getHeaderLine('Stripe-Signature'),true)));
         $app->get('/api/v1/public/{slug}',fn(Request $r,Response $res,array $a)=>$json($res,$admin->publicCompany($a['slug'])));
