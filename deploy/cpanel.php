@@ -46,7 +46,8 @@ function rendoraDeploy(string $repository,string $accountHome,bool $demo=false):
         $tmp=$to.'.deploy-'.bin2hex(random_bytes(6));if(!copy($from,$tmp)||!rename($tmp,$to))throw new RuntimeException('Falha ao copiar ficheiros.');
     };
     if($demo){
-        // The deployment only publishes code. The demo database is managed separately.
+        // Prepare the existing demo generation before publishing code that uses it.
+        if ($existingDemo) rendoraPrepareDemoCleaning($private, $repository);
         foreach([$private,$public] as $dir)if(!is_dir($dir)&&!mkdir($dir,0755,true))throw new RuntimeException('Sem permissões para criar o destino.');
         foreach(['src','vendor'] as $dir)$copy($repository.'/'.$dir,$private.'/'.$dir);
         if(!is_dir($private.'/public')&&!mkdir($private.'/public',0755))throw new RuntimeException('Sem permissões para criar a pasta da interface.');
@@ -96,6 +97,43 @@ function rendoraDeploy(string $repository,string $accountHome,bool $demo=false):
         unlink($private.'/storage/deploy.maintenance');
         return ['private'=>$private,'public'=>$public,'backup'=>$backup,'installed'=>is_file($private.'/.env')];
     } finally {flock($lock,LOCK_UN);fclose($lock);}
+}
+function rendoraPrepareDemoCleaning(string $private, string $repository): void {
+    $storage = $private . '/storage';
+    $generations = glob($storage . '/demo-*.sqlite');
+    $path = $generations ? end($generations) : false;
+    if (is_link($storage) || !$path || !preg_match('/^demo-[0-9]{14}\.sqlite$/D', basename($path))
+        || !is_file($path) || is_link($path)) {
+        throw new RuntimeException('Base SQLite da demo indisponível.');
+    }
+    $db = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    if ((int)$db->query('PRAGMA application_id')->fetchColumn() !== 1380205636) {
+        throw new RuntimeException('Base da demo inválida.');
+    }
+    $db->exec('PRAGMA busy_timeout=10000');
+    $db->exec('PRAGMA foreign_keys=ON');
+    $db->exec('BEGIN IMMEDIATE');
+    try {
+        $migration = '005_cleaning.sql';
+        $applied = $db->prepare('SELECT name FROM migrations WHERE name=?');
+        $applied->execute([$migration]);
+        if (!$applied->fetchColumn()) {
+            $db->exec(file_get_contents($repository . '/database/migrations/' . $migration));
+            $seed = $db->prepare("INSERT INTO cleaning_plans
+                (id, company_id, property_id, assignee_id, start_date, interval_days, visit_time)
+                SELECT 'cleaning-estrela', p.company_id, p.id, m.user_id, ?, 7, '10:00'
+                FROM properties p JOIN memberships m ON m.company_id=p.company_id
+                WHERE p.company_id='company-lisbon' AND p.id='p-estrela'
+                AND m.user_id='u-tech' AND m.role='TECHNICIAN' AND m.active=1");
+            $month = new DateTimeImmutable('first day of this month', new DateTimeZone('Europe/Lisbon'));
+            $seed->execute([$month->format('Y-m-d')]);
+            $db->prepare('INSERT INTO migrations(name) VALUES(?)')->execute([$migration]);
+        }
+        $db->exec('COMMIT');
+    } catch (Throwable $error) {
+        $db->exec('ROLLBACK');
+        throw $error;
+    }
 }
 if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){
     try{$result=rendoraDeploy(dirname(__DIR__),getenv('HOME')?:'',in_array('--demo',$argv,true));echo json_encode($result,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES)."\nDeploy concluído. Configura o document root para a pasta public indicada.\n";}

@@ -2,8 +2,9 @@
   "format": 1,
   "files": {
     "src/Administration.php": "7a92d123bdac29ffbf94261ef8b2cf5179e8dbb3bfc76cd26dcd5aa132d79b39",
-    "src/Application.php": "565798e262ad7b565e458cffbf825b73f441315f35ed1cd47b297850c3d3b63c",
+    "src/Application.php": "d22b7672d83b96f97bb45d7f3c95b357dcbc2c7405e22b4d5b10948c05426c27",
     "src/Auth.php": "969e44c7ce11445e7533069be8d6d57d28ca0afe9581f0a06b91e2e3de67ce37",
+    "src/Cleaning.php": "756874983a092973eab62c523697906a1e4eea42b4d87ff1d875f883066402e5",
     "src/Database.php": "50db471f6b4e4284b668c00f58057f2091812c412c029b7de94565c1012a268c",
     "src/Documents.php": "248ccd7a31f6e6879846bc13fda39fdada3113e4680ab09f77ede65393950861",
     "src/Finance.php": "9807199fb55013d2d20912eff450cf900c1d96eb9decc39d2c8b5fe8573b1483",
@@ -23,7 +24,8 @@
     "src/bootstrap.php": "0cd661756e739629f8017d5864c1e421dadd676906fdf98191ca7b3fb3f037bb",
     "database/migrations/001_initial.sql": "c820cb334976121d7632580993974ceb978a35af037fc81e28a746a168d3947a",
     "database/migrations/002_invitation_verification.sql": "aecd2e2b614a2ff279b360e98f3638e9c5dddd4993a96a71762c4940fa53a670",
-    "database/seed.php": "0e8f0bcca0cb7753a5ec232b9fb425df64c93ead56890fbceadd7371653e151e",
+    "database/migrations/005_cleaning.sql": "65072b0b350534a5c604d789d8a031b72ca02acbbef4511808e515fab7fbcea5",
+    "database/seed.php": "a7fbbd796b3e6a99bc1cda6f38fd569871effa14ec29787065634e8fe78317f6",
     "bin/console.php": "7bf303da4a05f39a3cb48f6e18d56cbff75deb3ad9833af1fae71b6db79b76f5",
     "bin/demo-snapshot.php": "7ac3842d923d59e7dfafec1c8c63a0b4076bb992b08f0e2d2a5274864c63b88a",
     "vendor/autoload.php": "1116dfff308313f8b94ef4b80cde97a8b3696b80b776f197c2b92f9700ce99bf",
@@ -908,7 +910,7 @@
     "vendor/vlucas/phpdotenv/src/Util/Str.php": "0e488e38976bb2e4277d4b37e8c33d1791ab14034d01c66c2aa868254561a43c",
     "vendor/vlucas/phpdotenv/src/Validator.php": "e37baadefdfd1c0e9cc58418054d48fb40a42b4e7efaadb977044560fbeacaa7",
     "deploy/config.example.json": "8f79428971ae79a3f16b77f9ed4009901f8202858ec0fcd56d2b7d135a57bbf2",
-    "deploy/cpanel.php": "25c7bb3f72692dc8434cd836c9974a93f5621d519fc4c0178c35b16f3f37807a",
+    "deploy/cpanel.php": "1ffdce5ab39d8eb33d0cc4ba06702fb25519f649b948c1c62a78a5b799e12e33",
     "deploy/cpanel.sh": "86f1ff82a25be389e1ab1bf52d60d833d30bcd28fe5d2698d856a2c697a0dce7",
     "deploy/demo.php": "19a4fd665979add3478f8df8ffb6178e539f38e160580dcd8da297dcc062480a",
     "deploy/web.php": "81c0ed721a6c4d4a8ed12b60c3cf8d548c866292a460cec61161a0544b64197e",
@@ -932,7 +934,7 @@
     "composer.lock": "ea20ae6be9a615abf6607250279a23d81458df755b2c634dbde63a9e5c50fcbe",
     ".env.example": "03c2268b2a7b4981e19b9c9e03619186bf3b59b062c0405a0164aa6b8b9893b5",
     ".htaccess": "fa28d421a28ed9b6f4b997d5119c2b8adbacff6e2dd119a179b71230f9664934",
-    "public/app.html": "84551f1f13c070a5942ccd7d82ca7ebb03be8b88a2b3ccbf35b6b70f9ae36b92",
+    "public/app.html": "fa9a72de1df22fc0a398128373cc4b86ac40e53abc8f4e2062c4ac65305dceeb",
     "public/openapi.json": "b9813dfa0116d2e56d747d446fffde6115c4f8cce8b6c883a9f801f866a3503f",
     "public/docs.html": "ec138347b44b918bed64ddfa5c040f7855ae90015a08793c86400fac769bb630",
     "public/.htaccess": "31fba7d7094c0104f3ded7bc13c00f2f5d314efb464abf4958350d16cf3d2bf9",
@@ -941,7 +943,7 @@
     "public/brand/rendora-light.svg": "b0807cbbe1d47cd6bb80479ff0893828ce6b02008ae9a8b22b334d10ab9ed9a7",
     "public/brand/rendora-symbol-dark.svg": "9dd2f5d4aeb5ced74b4116f595b537db838f44de259c56c910eabef7f04a5ed5",
     "public/brand/rendora-symbol-light.svg": "99c69b1b0d6a24b1d6d53bd724a2314cbc50c54d2ddf78a3e095185a79e36262",
-    "public/assets/app-BjdmLw82.js": "ab846a83d82da1c629414da5921c073f817c98fd2c1d10485d904f6284149034",
+    "public/assets/app-CeEH0CXv.js": "749a78cd69d03d4c96715670f1ba6d0f43b69c8e28e82c9c9d91ae64dec212d0",
     "public/assets/app-BDy7HTXj.css": "98f78def18947315e9ca093bb9179332ae032af7b53f7cfce82ee40312c2725c"
   }
 }
