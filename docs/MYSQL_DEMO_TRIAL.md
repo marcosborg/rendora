@@ -2,7 +2,7 @@
 
 O ensaio usa uma instância MySQL descartável e uma base vazia chamada `rendora_trial`. A demo publicada continua a usar SQLite. O router de teste só aceita pedidos locais e fica fora do pacote de publicação.
 
-1. Cria uma base vazia com o conjunto de caracteres `utf8mb4`. Aplica `database/mysql/001_demo_trial.sql` com o cliente MySQL. O ficheiro usa `DELIMITER` para criar os triggers de validação. Aplica de seguida `database/mysql/002_bank_transfers.sql` e `database/mysql/003_paypal_sandbox.sql` antes da importação.
+1. Cria uma base vazia com o conjunto de caracteres `utf8mb4`. Aplica `database/mysql/001_demo_trial.sql` com o cliente MySQL. O ficheiro usa `DELIMITER` para criar os triggers de validação. Aplica de seguida `database/mysql/002_bank_transfers.sql` e `database/mysql/003_paypal_sandbox.sql` e `database/mysql/004_cleaning.sql` antes da importação.
 2. Gera uma base fictícia com `php bin/demo-snapshot.php /tmp/demo-20261107170000.sqlite`. A importação aceita exclusivamente uma base marcada como demo, sem administradores globais. Exclui sessões, tokens de recuperação e limites de autenticação.
 3. Define `RENDORA_TRIAL_MYSQL_DSN`, `RENDORA_TRIAL_MYSQL_USER` e `RENDORA_TRIAL_MYSQL_PASSWORD` no ambiente local. Usa uma conta da base de ensaio. O DSN deve indicar `dbname=rendora_trial` e `charset=utf8mb4`.
 4. Executa `php scripts/mysql-demo-trial.php /tmp/demo-20261107170000.sqlite`. O importador exige um destino vazio e verifica contagens e totais em cêntimos antes de confirmar a transação.

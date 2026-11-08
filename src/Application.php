@@ -6,7 +6,7 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Message\ResponseInterface as Response;
 final class Application {
     public static function create(Database $db): \Slim\App {
-        $app=AppFactory::create();$auth=new Auth($db);$rentals=new Rentals($db);$finance=new Finance($db);$ops=new Operations($db);$admin=new Administration($db);$payments=new Payments($db);$docs=new Documents($db);$bank=new BankTransfers($db);$paypal=new PayPalSandbox($db);
+        $app=AppFactory::create();$auth=new Auth($db);$rentals=new Rentals($db);$finance=new Finance($db);$ops=new Operations($db);$cleaning=new Cleaning($db);$admin=new Administration($db);$payments=new Payments($db);$docs=new Documents($db);$bank=new BankTransfers($db);$paypal=new PayPalSandbox($db);
         $json=static function(Response $r,mixed $data,int $status=200):Response{$r->getBody()->write(json_encode($data,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR));return $r->withStatus($status)->withHeader('Content-Type','application/json; charset=utf-8')->withHeader('Cache-Control','no-store');};
         $body=static function(Request $r):array{$data=$r->getParsedBody();if(!is_array($data))return [];return $data;};
         $route=static function(string $method,string $path,callable $handler)use($app,$auth,$json,$body){$app->map([$method],'/api/v1'.$path,function(Request $r,Response $response,array $args)use($handler,$auth,$json,$body){$scope=$auth->scope($r);$result=$handler($scope,$body($r),$args,$r);return $result instanceof Response?$result:$json($response,$result??['ok'=>true]);});};
@@ -79,6 +79,9 @@ final class Application {
         $route('GET','/tickets',fn($s)=>$ops->tickets($s));
         $route('POST','/tickets',fn($s,$d)=>$ops->createTicket($s,$d));
         $route('GET','/tickets/{id}',fn($s,$d,$a)=>$ops->ticket($s,$a['id']));
+        $route('GET','/cleaning',fn($s,$d,$a,$r)=>$cleaning->agenda($s,$r->getQueryParams()['period']??substr(Database::today(),0,7)));
+        $route('POST','/cleaning/plans',fn($s,$d)=>$cleaning->create($s,$d));
+        $route('PATCH','/cleaning/plans/{id}/visits/{date}',fn($s,$d,$a)=>$cleaning->updateVisit($s,$a['id'],$a['date'],$d));
         $route('PATCH','/tickets/{id}',fn($s,$d,$a)=>$ops->updateTicket($s,$a['id'],$d));
         $route('POST','/tickets/{id}/notes',fn($s,$d,$a)=>$ops->note($s,$a['id'],$d));
         $route('POST','/tickets/{id}/reopen',fn($s,$d,$a)=>$ops->reopen($s,$a['id']));

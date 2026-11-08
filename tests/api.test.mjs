@@ -259,3 +259,43 @@ test('tenant app sign-in uses a bearer session and excludes other workspaces',as
   assert.equal((await req('/auth/me',{headers},null)).status,401);
 });
 test('no unexpected PHP warnings or fatal errors during requests',()=>{assert.doesNotMatch(stderr,/PHP (Warning|Fatal|Parse|Deprecated)/);assert.doesNotMatch(stderr,/HomeAlone error/);});
+
+test('recurring cleaning supports assigned completion and moves one visit across months', async () => {
+  const input = { property_id: 'p-estrela', assignee_id: 'u-tech', start_date: '2033-01-24',
+    end_date: '2033-02-01', interval_days: 7, visit_time: '10:00' };
+  const agenda = (period, session = admin, company) => req('/cleaning?period=' + period, {}, session, company);
+  assert.equal((await post('/cleaning/plans', input, tech)).status, 403);
+  assert.equal((await post('/cleaning/plans', { ...input, assignee_id: 'u-porto' })).status, 422);
+  assert.equal((await post('/cleaning/plans', { ...input, property_id: 'p-porto' })).status, 404);
+  assert.equal((await post('/cleaning/plans', { ...input, interval_days: 0 })).status, 422);
+  assert.equal((await post('/cleaning/plans', { ...input, end_date: '2033-01-01' })).status, 422);
+  const created = await post('/cleaning/plans', input);
+  assert.equal(created.status, 200, JSON.stringify(created.data));
+  const plan = created.data.id;
+  const visits = result => result.data.visits.filter(visit => visit.plan_id === plan);
+  const update = (day, data, session = admin, company) => req(`/cleaning/plans/${plan}/visits/${day}`, {
+    method: 'PATCH', body: JSON.stringify(data),
+  }, session, company);
+  assert.deepEqual(visits(await agenda('2033-01', tech)).map(v => v.scheduled_date), ['2033-01-24', '2033-01-31']);
+  assert.equal((await agenda('2033-01', resident)).status, 403);
+  assert.deepEqual(visits(await agenda('2033-01', porto, 'company-porto')), []);
+  assert.equal((await update('2033-01-24', { action: 'COMPLETE' }, porto, 'company-porto')).status, 404);
+  assert.equal((await update('2033-01-25', { action: 'COMPLETE' })).status, 404);
+  const move = { action: 'RESCHEDULE', scheduled_date: '2033-02-02' };
+  assert.equal((await update('2033-01-31', move, tech)).status, 403);
+  assert.equal((await update('2033-01-31', move)).status, 200);
+  assert.deepEqual(visits(await agenda('2033-01')).map(v => v.scheduled_date), ['2033-01-24']);
+  const [moved] = visits(await agenda('2033-02', tech));
+  assert.equal(moved.occurrence_date, '2033-01-31');
+  assert.equal(moved.scheduled_date, '2033-02-02');
+  const completed = await update(moved.occurrence_date, { action: 'COMPLETE' }, tech);
+  assert.equal(completed.status, 200);
+  assert.equal(completed.data.completed_by, 'u-tech');
+  const repeated = await update(moved.occurrence_date, { action: 'COMPLETE' });
+  assert.equal(repeated.data.completed_by, 'u-tech');
+  assert.equal(repeated.data.completed_at, completed.data.completed_at);
+  assert.equal((await update(moved.occurrence_date, move)).status, 409);
+  const [history] = visits(await agenda('2033-02'));
+  assert.equal(history.completed_by_name, 'João Ferreira');
+  assert.equal(history.completed_at, completed.data.completed_at);
+});

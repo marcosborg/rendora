@@ -99,6 +99,18 @@ test('packaged public demo isolates roles, integrations and database generations
   const owner = await login('proprietario@demo.homealone.pt', 'OWNER');
   const tech = await login('tecnico@demo.homealone.pt', 'TECHNICIAN');
   const porto = await login('gestor@demo.porto.pt', 'ADMIN', 'company-porto');
+  const managerCleaning = await req('/cleaning', { session: manager });
+  assert.equal(managerCleaning.status, 200);
+  const cleaning = (await managerCleaning.json()).visits;
+  assert.ok(cleaning.length > 0);
+  assert.deepEqual((await (await req('/cleaning', { session: tech })).json()).visits, cleaning);
+  assert.equal((await req('/cleaning', { session: resident })).status, 403);
+  assert.equal((await req('/cleaning', { session: owner })).status, 403);
+  assert.equal((await req('/cleaning/plans', { session: manager, method: 'POST', body: {} })).status, 403);
+  assert.equal((await req(`/cleaning/plans/${cleaning[0].plan_id}/visits/${cleaning[0].occurrence_date}`, {
+    session: tech, method: 'PATCH', body: { action: 'COMPLETE' },
+  })).status, 403);
+
   for (const route of ['/properties', '/contacts', '/contracts', '/contracts/ct-ines/document', '/charges',
     '/expenses', '/tickets', '/leads', '/conversations', '/notifications', '/settings', '/members',
     '/audit', '/jobs', '/documents?entity_type=contract&entity_id=ct-ines']) {
